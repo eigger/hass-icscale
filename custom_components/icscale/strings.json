@@ -1,0 +1,51 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "bluetooth_confirm": {
+        "description": "Do you want to set up {name}?"
+      },
+      "user": {
+        "description": "Select a kitchen scale to set up.",
+        "data": {
+          "address": "Bluetooth device"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Device is already configured",
+      "no_devices_found": "No unconfigured kitchen scales found",
+      "not_supported": "This device is not a supported kitchen scale"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Kitchen Scale options",
+        "data": {
+          "idle_timeout": "Idle disconnect timeout (minutes)"
+        },
+        "data_description": {
+          "idle_timeout": "Disconnect after this many minutes without a weight change, so the scale can power off and the phone app can use Bluetooth. HA reconnects automatically when the scale is used again."
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "weight": { "name": "Weight" },
+      "unit": { "name": "Display unit" }
+    },
+    "binary_sensor": {
+      "stable": { "name": "Stable" }
+    },
+    "button": {
+      "measure": { "name": "Measure now" },
+      "tare": { "name": "Tare" },
+      "power_off": { "name": "Power off" }
+    },
+    "switch": {
+      "auto_measure": { "name": "Automatic measurement" }
+    }
+  }
+}

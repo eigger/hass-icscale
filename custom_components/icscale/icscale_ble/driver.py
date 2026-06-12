@@ -26,7 +26,7 @@ from .const import (
     WRITE_CHAR,
 )
 from .models import DeviceInfo, ScaleState
-from .parser import checksum_ok, parse_notification
+from .parser import parse_notification
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -153,15 +153,13 @@ class IcScaleClient:
         if sample is None:
             _LOGGER.debug("%s: unrecognised frame %s", self._name, raw.hex(" "))
             return
-        if not checksum_ok(raw):
-            # Not fatal: surfaces data on hardware variants while flagging that
-            # the assumed frame layout may need adjustment.
-            _LOGGER.debug(
-                "%s: checksum mismatch on frame %s (parsed %.3f g)",
-                self._name,
-                raw.hex(" "),
-                sample.grams,
-            )
+        _LOGGER.debug(
+            "%s: %s -> %.3f g (stable=%s)",
+            self._name,
+            raw.hex(" "),
+            sample.grams,
+            sample.stable,
+        )
         self._state.weight = sample
         if sample.unit is not None:
             self._state.unit = sample.unit

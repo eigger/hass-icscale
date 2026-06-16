@@ -30,11 +30,13 @@ from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.event import async_track_time_interval
 
+from .const import DEFAULT_MODEL, DOMAIN
 from .icscale_ble import IcScaleClient, ScaleState
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .types import IcScaleConfigEntry
+
 
 
 _LOGGER = logging.getLogger(__name__)

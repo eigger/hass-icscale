@@ -87,6 +87,14 @@ class IcScaleSensor(IcScaleEntity, SensorEntity):
         """Return the current value from the coordinator state."""
         return self.entity_description.value_fn(self.coordinator.state)
 
+    @property
+    def available(self) -> bool:
+        """Return True if the sensor is available."""
+        if self.entity_description.key == "unit" and self.coordinator.state.is_coffee:
+            return False
+        return super().available
+
+
 
 class IcScaleRssiSensor(IcScaleEntity, SensorEntity):
     """Signal strength sensor sourced from advertisements."""

@@ -26,7 +26,7 @@ from .const import (
     WRITE_CHAR,
 )
 from .models import DeviceInfo, ScaleState
-from .parser import parse_notification
+from .parser import COFFEE_MIN_LEN, parse_notification
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -82,6 +82,7 @@ class IcScaleClient:
 
             def _disconnected(_client: BleakClient) -> None:
                 _LOGGER.debug("%s disconnected", self._name)
+                self._client = None
                 if self._on_disconnect is not None:
                     self._on_disconnect()
 
@@ -94,8 +95,17 @@ class IcScaleClient:
             self._client = client
             _LOGGER.debug("%s connected", self._name)
 
-            await self._read_device_info()
-            await client.start_notify(NOTIFY_CHAR, self._handle_notification)
+            try:
+                await self._read_device_info()
+                await client.start_notify(NOTIFY_CHAR, self._handle_notification)
+            except Exception:
+                self._client = None
+                try:
+                    await client.disconnect()
+                except Exception:
+                    pass
+                raise
+
 
     async def disconnect(self) -> None:
         """Tear down the GATT link if connected."""
@@ -146,6 +156,9 @@ class IcScaleClient:
             value = raw.decode("utf-8", "replace").strip("\x00").strip() or None
             setattr(info, attr, value)
         self._state.info = info
+        if info.model and "coffee" in info.model.lower():
+            self._state.is_coffee = True
+
 
     def _handle_notification(self, _sender: int, data: bytearray) -> None:
         raw = bytes(data)
@@ -153,6 +166,9 @@ class IcScaleClient:
         if sample is None:
             _LOGGER.debug("%s: unrecognised frame %s", self._name, raw.hex(" "))
             return
+        if len(raw) > COFFEE_MIN_LEN:
+            self._state.is_coffee = True
+
         _LOGGER.debug(
             "%s: %s -> %.3f g (stable=%s)",
             self._name,

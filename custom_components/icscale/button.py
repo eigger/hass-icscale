@@ -72,8 +72,11 @@ class IcScaleButton(IcScaleEntity, ButtonEntity):
 
     @property
     def available(self) -> bool:
-        """Buttons are always available so commands can be sent on-demand."""
+        """Buttons are always available unless unsupported on this model."""
+        if self.entity_description.key in ("tare", "power_off") and self.coordinator.state.is_coffee:
+            return False
         return True
+
 
     async def async_press(self) -> None:
         """Issue the bound command."""

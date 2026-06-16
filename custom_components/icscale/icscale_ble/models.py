@@ -40,3 +40,5 @@ class ScaleState:
     weight: WeightSample | None = None
     unit: KitchenScaleUnit | None = None
     info: DeviceInfo = field(default_factory=DeviceInfo)
+    is_coffee: bool = False
+

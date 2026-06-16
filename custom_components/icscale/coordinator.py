@@ -134,7 +134,10 @@ class IcScaleCoordinator:
     @property
     def model(self) -> str:
         """Best-known device model string."""
+        if self.state.is_coffee or (self.state.info.model and "coffee" in self.state.info.model.lower()):
+            return "Coffee Scale"
         return self.state.info.model or DEFAULT_MODEL
+
 
     async def async_set_enabled(self, enabled: bool) -> None:
         """Enable/disable HA holding the connection (the 'Connection' switch)."""

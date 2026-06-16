@@ -69,9 +69,10 @@ class IcScaleCoordinator:
         """Initialize the coordinator."""
         self.hass = hass
         self.entry = entry
-        self.address = address
+        self.address = address.upper()
         self.name = name
         self.idle_timeout = idle_timeout
+
 
 
         # User-facing "Connection" switch; when False we never hold the link.
@@ -101,9 +102,10 @@ class IcScaleCoordinator:
         self._unsub_advert = bluetooth.async_register_callback(
             self.hass,
             self._async_on_advertisement,
-            {"address": self.address, "connectable": True},
+            {"address": self.address},
             BluetoothScanningMode.ACTIVE,
         )
+
         self._unsub_idle = async_track_time_interval(
             self.hass, self._async_check_idle, IDLE_CHECK_INTERVAL
         )
@@ -227,8 +229,9 @@ class IcScaleCoordinator:
                 self._idle_released = False
 
         _LOGGER.debug(
-            "%s: advertisement received. enabled=%s, idle_released=%s, client_connected=%s, closing=%s, locked=%s",
+            "%s: advertisement received. connectable=%s, enabled=%s, idle_released=%s, client_connected=%s, closing=%s, locked=%s",
             self.name,
+            service_info.connectable,
             self.enabled,
             self._idle_released,
             self._client.is_connected,
@@ -236,14 +239,17 @@ class IcScaleCoordinator:
             self._lock.locked(),
         )
 
+
         if (
             self.enabled
             and not self._idle_released
             and not self._client.is_connected
             and not self._closing
             and not self._lock.locked()
+            and service_info.connectable
         ):
             _LOGGER.debug("%s: triggering async_connect task", self.name)
+
             self.hass.async_create_task(self._async_connect())
 
         self._async_notify_listeners()

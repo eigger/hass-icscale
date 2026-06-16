@@ -93,23 +93,41 @@ class IcScaleCoordinator:
         self._last_adv_time: float | None = None
         self._idle_released = False
         self._idle_released_time: float | None = None
+        # Set once the scale has dropped out of range after an idle release, so
+        # its next reappearance counts as a genuine re-wake (not just the same
+        # link still advertising). See _async_watchdog.
+        self._slept_since_release = False
 
     # --- lifecycle --------------------------------------------------------
 
     async def async_start(self) -> None:
         """Track advertisements and start the idle watchdog."""
         self._closing = False
-        _LOGGER.info("%s: Registering Bluetooth advertisement callback for address %s", self.name, self.address)
+        # The advertisement callback is only a fast path. HA's bluetooth manager
+        # de-duplicates advertisements: if the payload (manufacturer/service
+        # data, UUIDs, name) is unchanged from the last one, it skips dispatch
+        # to registered callbacks. This scale's advertisement is *static* (it
+        # carries no weight), so after the first sighting is cached our callback
+        # stops firing entirely -- which is why a reconnect never happened after
+        # the first disconnect. Reconnection therefore cannot rely on this
+        # callback; the watchdog timer below drives it by polling presence.
+        # connectable=False just means "deliver from any scan path" when a
+        # genuinely new advertisement does come through.
+        _LOGGER.info(
+            "%s: Registering Bluetooth advertisement callback for address %s",
+            self.name,
+            self.address,
+        )
         self._unsub_advert = bluetooth.async_register_callback(
             self.hass,
             self._async_on_advertisement,
-            {"address": self.address},
+            {"address": self.address, "connectable": False},
             BluetoothScanningMode.PASSIVE,
         )
         _LOGGER.info("%s: Bluetooth callback registered (PASSIVE mode)", self.name)
 
         self._unsub_idle = async_track_time_interval(
-            self.hass, self._async_check_idle, IDLE_CHECK_INTERVAL
+            self.hass, self._async_watchdog, IDLE_CHECK_INTERVAL
         )
         # If the scale is already in range, connect now rather than waiting for
         # the next advertisement.
@@ -163,6 +181,7 @@ class IcScaleCoordinator:
         self.enabled = enabled
         if enabled:
             self._idle_released = False
+            self._slept_since_release = False
             await self._async_connect()
         else:
             await self._client.disconnect()
@@ -246,14 +265,16 @@ class IcScaleCoordinator:
         )
 
 
-
+        # Note: we intentionally do not gate on service_info.connectable here.
+        # A non-connectable sighting still proves the scale is awake and must
+        # drive the gap/wake bookkeeping above; _async_connect() resolves a
+        # connectable handle itself and defers if none is available.
         if (
             self.enabled
             and not self._idle_released
             and not self._client.is_connected
             and not self._closing
             and not self._lock.locked()
-            and service_info.connectable
         ):
             _LOGGER.debug("%s: triggering async_connect task", self.name)
 
@@ -311,23 +332,70 @@ class IcScaleCoordinator:
             )
         self._async_notify_listeners()
 
-    async def _async_check_idle(self, _now=None) -> None:
-        """Disconnect a connection that has seen no weight change for too long."""
-        if self._closing or not self._client.is_connected:
+    async def _async_watchdog(self, _now=None) -> None:
+        """Periodic tick: disconnect when idle, otherwise (re)connect when able.
+
+        This is the reliable driver for reconnection. The advertisement callback
+        cannot be relied on because HA de-duplicates this scale's static
+        advertisement (see async_start), so after the first disconnect no
+        further advertisement callbacks arrive. Polling presence here closes
+        that gap.
+        """
+        if self._closing or not self.enabled:
             return
-        if self._last_weight_change is None:
+
+        if self._client.is_connected:
+            # Connected: disconnect if no weight change for the idle window.
+            if self._last_weight_change is None:
+                return
+            elapsed = time.monotonic() - self._last_weight_change
+            if elapsed >= self.idle_timeout * 60:
+                _LOGGER.info(
+                    "%s: no weight change for %d min; disconnecting to allow sleep",
+                    self.name,
+                    self.idle_timeout,
+                )
+                self._idle_released = True
+                self._idle_released_time = time.monotonic()
+                self._slept_since_release = False
+                await self._client.disconnect()
+                self._async_notify_listeners()
             return
-        elapsed = time.monotonic() - self._last_weight_change
-        if elapsed >= self.idle_timeout * 60:
-            _LOGGER.info(
-                "%s: no weight change for %d min; disconnecting to allow sleep",
-                self.name,
-                self.idle_timeout,
+
+        # Not connected: decide whether to reconnect.
+        now = time.monotonic()
+        device = bluetooth.async_ble_device_from_address(
+            self.hass, self.address, connectable=True
+        )
+        present = device is not None
+
+        if self._idle_released:
+            # Hold off reconnecting after an idle disconnect until the scale has
+            # genuinely re-woken (gone out of range and come back) or the
+            # failsafe interval elapses, so it can actually sleep / let the phone
+            # app take the single allowed link.
+            if not present:
+                self._slept_since_release = True
+            timed_out = (
+                self._idle_released_time is not None
+                and now - self._idle_released_time > RECONNECT_FALLBACK
             )
-            self._idle_released = True
-            self._idle_released_time = time.monotonic()
-            await self._client.disconnect()
-            self._async_notify_listeners()
+            if (present and self._slept_since_release) or timed_out:
+                _LOGGER.debug(
+                    "%s: clearing idle_released (present=%s, slept=%s, timed_out=%s)",
+                    self.name,
+                    present,
+                    self._slept_since_release,
+                    timed_out,
+                )
+                self._idle_released = False
+                self._slept_since_release = False
+            else:
+                return
+
+        if present and not self._lock.locked():
+            _LOGGER.debug("%s: watchdog triggering reconnect", self.name)
+            await self._async_connect()
 
     # --- commands ---------------------------------------------------------
 
@@ -369,6 +437,7 @@ class IcScaleCoordinator:
         so a fresh reading streams in.
         """
         self._idle_released = False
+        self._slept_since_release = False
         await self._async_ensure_connected("Measure")
         self._last_weight_change = time.monotonic()
         self._async_notify_listeners()

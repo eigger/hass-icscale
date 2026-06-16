@@ -127,8 +127,9 @@ class IcScaleCoordinator:
 
     @property
     def available(self) -> bool:
-        """Entities stay available once we have any reading (shows last value)."""
-        return self._client.is_connected or self.state.weight is not None
+        """Entities are always available to display their last known state."""
+        return True
+
 
     @property
     def model(self) -> str:

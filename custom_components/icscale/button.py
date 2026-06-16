@@ -70,6 +70,12 @@ class IcScaleButton(IcScaleEntity, ButtonEntity):
         super().__init__(coordinator, description.key)
         self.entity_description = description
 
+    @property
+    def available(self) -> bool:
+        """Buttons are always available so commands can be sent on-demand."""
+        return True
+
     async def async_press(self) -> None:
         """Issue the bound command."""
         await self.entity_description.press_fn(self.coordinator)
+

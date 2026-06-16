@@ -51,9 +51,15 @@ async def async_setup_entry(
 ) -> None:
     """Set up kitchen scale buttons."""
     coordinator: IcScaleCoordinator = entry.runtime_data
-    async_add_entities(
-        IcScaleButton(coordinator, description) for description in BUTTONS
-    )
+    is_coffee = entry.data.get("is_coffee", False)
+
+    entities = []
+    for description in BUTTONS:
+        if description.key in ("tare", "power_off") and is_coffee:
+            continue
+        entities.append(IcScaleButton(coordinator, description))
+    async_add_entities(entities)
+
 
 
 class IcScaleButton(IcScaleEntity, ButtonEntity):

@@ -43,10 +43,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: IcScaleConfigEntry) -> b
     idle_timeout = _resolve_options(entry)
     coordinator = IcScaleCoordinator(
         hass,
+        entry,
         address=address,
         name=entry.title or "Kitchen Scale",
         idle_timeout=idle_timeout,
     )
+
     entry.runtime_data = coordinator
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

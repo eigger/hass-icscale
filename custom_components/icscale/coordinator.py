@@ -30,16 +30,21 @@ from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.event import async_track_time_interval
 
-from .const import DEFAULT_MODEL, DOMAIN
 from .icscale_ble import IcScaleClient, ScaleState
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from .types import IcScaleConfigEntry
+
 
 _LOGGER = logging.getLogger(__name__)
 
 # How often to check for connection idleness.
 IDLE_CHECK_INTERVAL = timedelta(seconds=30)
-# An advertisement gap longer than this means the scale slept and re-woke, so a
+# An advertisement gap longer than this means the scale slept and re-woken, so a
 # fresh advertisement should trigger a reconnect even after an idle disconnect.
-AWAY_THRESHOLD = 15.0
+AWAY_THRESHOLD = 5.0
+
 # Failsafe: re-check a scale that keeps advertising forever this long after an
 # idle disconnect, even without an advertisement gap.
 RECONNECT_FALLBACK = 120.0
@@ -53,6 +58,7 @@ class IcScaleCoordinator:
     def __init__(
         self,
         hass: HomeAssistant,
+        entry: IcScaleConfigEntry,
         address: str,
         name: str,
         *,
@@ -60,9 +66,11 @@ class IcScaleCoordinator:
     ) -> None:
         """Initialize the coordinator."""
         self.hass = hass
+        self.entry = entry
         self.address = address
         self.name = name
         self.idle_timeout = idle_timeout
+
 
         # User-facing "Connection" switch; when False we never hold the link.
         self.enabled = True
@@ -172,6 +180,9 @@ class IcScaleCoordinator:
     @callback
     def _on_client_update(self, state: ScaleState) -> None:
         # Called from the bleak notification loop; marshal to the HA loop.
+        if state.is_coffee and not self.entry.data.get("is_coffee"):
+            self.hass.async_create_task(self._async_save_coffee_scale_type())
+
         if state.weight is not None:
             current = state.weight.grams
             if (
@@ -181,6 +192,7 @@ class IcScaleCoordinator:
                 self._last_weight_change = time.monotonic()
                 self._last_weight_value = current
         self.hass.loop.call_soon_threadsafe(self._async_notify_listeners)
+
 
     @callback
     def _async_on_advertisement(
@@ -201,8 +213,26 @@ class IcScaleCoordinator:
                 self._idle_released_time is not None
                 and now - self._idle_released_time > RECONNECT_FALLBACK
             )
+            _LOGGER.debug(
+                "%s: idle_released is True. gap=%s, AWAY_THRESHOLD=%s, woke=%s, timed_out=%s",
+                self.name,
+                f"{gap:.1f}s" if gap is not None else "None",
+                AWAY_THRESHOLD,
+                woke,
+                timed_out,
+            )
             if woke or timed_out:
                 self._idle_released = False
+
+        _LOGGER.debug(
+            "%s: advertisement received. enabled=%s, idle_released=%s, client_connected=%s, closing=%s, locked=%s",
+            self.name,
+            self.enabled,
+            self._idle_released,
+            self._client.is_connected,
+            self._closing,
+            self._lock.locked(),
+        )
 
         if (
             self.enabled
@@ -211,6 +241,7 @@ class IcScaleCoordinator:
             and not self._closing
             and not self._lock.locked()
         ):
+            _LOGGER.debug("%s: triggering async_connect task", self.name)
             self.hass.async_create_task(self._async_connect())
 
         self._async_notify_listeners()
@@ -223,9 +254,23 @@ class IcScaleCoordinator:
 
     async def _async_connect(self) -> None:
         if self._closing or not self.enabled or self._client.is_connected:
+            _LOGGER.debug(
+                "%s: async_connect aborted early. closing=%s, enabled=%s, connected=%s",
+                self.name,
+                self._closing,
+                self.enabled,
+                self._client.is_connected,
+            )
             return
         async with self._lock:
             if self._closing or not self.enabled or self._client.is_connected:
+                _LOGGER.debug(
+                    "%s: async_connect aborted under lock. closing=%s, enabled=%s, connected=%s",
+                    self.name,
+                    self._closing,
+                    self.enabled,
+                    self._client.is_connected,
+                )
                 return
             device = bluetooth.async_ble_device_from_address(
                 self.hass, self.address, connectable=True
@@ -233,11 +278,14 @@ class IcScaleCoordinator:
             if device is None:
                 _LOGGER.debug("%s not in range; deferring connect", self.name)
                 return
+            _LOGGER.debug("%s: initiating Bleak connection", self.name)
             try:
                 await self._client.connect(device, self._on_disconnected)
+                _LOGGER.debug("%s: Bleak connection successful", self.name)
             except Exception as err:  # noqa: BLE001 - log and retry on next advert
                 _LOGGER.debug("%s connect failed: %s", self.name, err)
                 return
+
             # Start the idle clock from the moment we connect.
             self._last_weight_change = time.monotonic()
             self._last_weight_value = (
@@ -314,3 +362,10 @@ class IcScaleCoordinator:
     async def async_power_off(self) -> None:
         """Power the scale off."""
         await self._async_run_command(self._client.power_off, "Power off")
+
+    async def _async_save_coffee_scale_type(self) -> None:
+        """Save the scale type in config entry and reload to update entities."""
+        new_data = {**self.entry.data, "is_coffee": True}
+        self.hass.config_entries.async_update_entry(self.entry, data=new_data)
+        await self.hass.config_entries.async_reload(self.entry.entry_id)
+

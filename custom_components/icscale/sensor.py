@@ -61,11 +61,17 @@ async def async_setup_entry(
 ) -> None:
     """Set up kitchen scale sensors."""
     coordinator: IcScaleCoordinator = entry.runtime_data
-    entities: list[SensorEntity] = [
-        IcScaleSensor(coordinator, description) for description in SENSORS
-    ]
+    is_coffee = entry.data.get("is_coffee", False)
+
+    entities: list[SensorEntity] = []
+    for description in SENSORS:
+        if description.key == "unit" and is_coffee:
+            continue
+        entities.append(IcScaleSensor(coordinator, description))
+
     entities.append(IcScaleRssiSensor(coordinator))
     async_add_entities(entities)
+
 
 
 class IcScaleSensor(IcScaleEntity, SensorEntity):

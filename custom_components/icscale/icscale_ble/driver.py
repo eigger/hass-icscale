@@ -82,6 +82,7 @@ class IcScaleClient:
 
             def _disconnected(_client: BleakClient) -> None:
                 _LOGGER.debug("%s disconnected", self._name)
+                self._client = None
                 if self._on_disconnect is not None:
                     self._on_disconnect()
 
@@ -94,8 +95,17 @@ class IcScaleClient:
             self._client = client
             _LOGGER.debug("%s connected", self._name)
 
-            await self._read_device_info()
-            await client.start_notify(NOTIFY_CHAR, self._handle_notification)
+            try:
+                await self._read_device_info()
+                await client.start_notify(NOTIFY_CHAR, self._handle_notification)
+            except Exception:
+                self._client = None
+                try:
+                    await client.disconnect()
+                except Exception:
+                    pass
+                raise
+
 
     async def disconnect(self) -> None:
         """Tear down the GATT link if connected."""

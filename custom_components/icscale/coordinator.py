@@ -99,12 +99,14 @@ class IcScaleCoordinator:
     async def async_start(self) -> None:
         """Track advertisements and start the idle watchdog."""
         self._closing = False
+        _LOGGER.info("%s: Registering Bluetooth advertisement callback for address %s", self.name, self.address)
         self._unsub_advert = bluetooth.async_register_callback(
             self.hass,
             self._async_on_advertisement,
             {"address": self.address},
-            BluetoothScanningMode.ACTIVE,
+            BluetoothScanningMode.PASSIVE,
         )
+        _LOGGER.info("%s: Bluetooth callback registered (PASSIVE mode)", self.name)
 
         self._unsub_idle = async_track_time_interval(
             self.hass, self._async_check_idle, IDLE_CHECK_INTERVAL
@@ -114,8 +116,10 @@ class IcScaleCoordinator:
         if self.enabled:
             self.hass.async_create_task(self._async_connect())
 
+
     async def async_stop(self) -> None:
         """Stop tracking and disconnect."""
+        _LOGGER.info("%s: Stopping Bluetooth tracking", self.name)
         self._closing = True
         if self._unsub_advert is not None:
             self._unsub_advert()
@@ -124,6 +128,7 @@ class IcScaleCoordinator:
             self._unsub_idle()
             self._unsub_idle = None
         await self._client.disconnect()
+
 
     # --- entity plumbing --------------------------------------------------
 
@@ -229,8 +234,9 @@ class IcScaleCoordinator:
                 self._idle_released = False
 
         _LOGGER.debug(
-            "%s: advertisement received. connectable=%s, enabled=%s, idle_released=%s, client_connected=%s, closing=%s, locked=%s",
+            "%s: advertisement received from source %s. connectable=%s, enabled=%s, idle_released=%s, client_connected=%s, closing=%s, locked=%s",
             self.name,
+            service_info.source,
             service_info.connectable,
             self.enabled,
             self._idle_released,
@@ -238,6 +244,7 @@ class IcScaleCoordinator:
             self._closing,
             self._lock.locked(),
         )
+
 
 
         if (
@@ -256,7 +263,9 @@ class IcScaleCoordinator:
 
     @callback
     def _on_disconnected(self) -> None:
+        _LOGGER.info("%s: Connection disconnected (GATT link lost)", self.name)
         self.hass.loop.call_soon_threadsafe(self._async_notify_listeners)
+
 
     # --- connection drivers ----------------------------------------------
 
@@ -286,13 +295,14 @@ class IcScaleCoordinator:
             if device is None:
                 _LOGGER.debug("%s not in range; deferring connect", self.name)
                 return
-            _LOGGER.debug("%s: initiating Bleak connection", self.name)
+            _LOGGER.info("%s: Initiating connection attempt to %s", self.name, self.address)
             try:
                 await self._client.connect(device, self._on_disconnected)
-                _LOGGER.debug("%s: Bleak connection successful", self.name)
+                _LOGGER.info("%s: Connection established successfully", self.name)
             except Exception as err:  # noqa: BLE001 - log and retry on next advert
-                _LOGGER.debug("%s connect failed: %s", self.name, err)
+                _LOGGER.error("%s: Connection attempt failed: %s", self.name, err)
                 return
+
 
             # Start the idle clock from the moment we connect.
             self._last_weight_change = time.monotonic()

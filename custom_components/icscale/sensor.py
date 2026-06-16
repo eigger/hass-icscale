@@ -18,6 +18,8 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.restore_state import RestoreEntity
+
 
 from .coordinator import IcScaleCoordinator
 from .entity import IcScaleEntity
@@ -74,7 +76,7 @@ async def async_setup_entry(
 
 
 
-class IcScaleSensor(IcScaleEntity, SensorEntity):
+class IcScaleSensor(IcScaleEntity, RestoreEntity, SensorEntity):
     """A scale-state-backed sensor."""
 
     entity_description: IcScaleSensorDescription
@@ -92,6 +94,37 @@ class IcScaleSensor(IcScaleEntity, SensorEntity):
     def native_value(self) -> float | int | str | None:
         """Return the current value from the coordinator state."""
         return self.entity_description.value_fn(self.coordinator.state)
+
+    async def async_added_to_hass(self) -> None:
+        """Handle entity about to be added to hass."""
+        await super().async_added_to_hass()
+        if (last_state := await self.async_get_last_state()) is not None and last_state.state not in (None, "unknown", "unavailable"):
+            if self.entity_description.key == "weight":
+                try:
+                    val = float(last_state.state)
+                    from .icscale_ble import WeightSample
+                    if self.coordinator.state.weight is None:
+                        self.coordinator.state.weight = WeightSample(
+                            grams=val,
+                            stable=True,
+                        )
+                    else:
+                        w = self.coordinator.state.weight
+                        self.coordinator.state.weight = WeightSample(
+                            grams=val,
+                            stable=w.stable,
+                            unit=w.unit,
+                            precision=w.precision,
+                        )
+                except (ValueError, TypeError):
+                    pass
+            elif self.entity_description.key == "unit":
+                from .icscale_ble import UNIT_LABELS
+                for unit_enum, label in UNIT_LABELS.items():
+                    if label == last_state.state:
+                        self.coordinator.state.unit = unit_enum
+                        break
+
 
     @property
     def available(self) -> bool:

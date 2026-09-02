@@ -14,6 +14,10 @@ Assistant entities. A single, device-faithful connection strategy:
   genuinely re-wake (an advertisement gap, i.e. it slept and came back) before
   reconnecting, with a long fallback so a scale that never stops advertising is
   still re-checked periodically.
+* "In range" means *recently advertising*, not merely present in HA's
+  connectable history: that history outlives a powered-off scale by minutes, and
+  connecting to such a stale handle only ties up a proxy connection slot. Failed
+  attempts additionally back off exponentially until the scale is seen again.
 """
 
 from __future__ import annotations
@@ -35,6 +39,8 @@ from .icscale_ble import IcScaleClient, ScaleState
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
+    from bleak.backends.device import BLEDevice
+
     from .types import IcScaleConfigEntry
 
 
@@ -52,6 +58,18 @@ AWAY_THRESHOLD = 5.0
 RECONNECT_FALLBACK = 120.0
 # Minimum weight delta (grams) that counts as activity (resets the idle timer).
 WEIGHT_CHANGE_THRESHOLD = 0.1
+
+# HA keeps an address in its connectable history for ~3 minutes after the last
+# advertisement, so a handle is still returned long after the scale has powered
+# itself off. Connecting to such a handle just burns proxy connection slots for
+# a couple of minutes per attempt, so treat the scale as gone once its last
+# advertisement is older than this.
+ADVERTISEMENT_STALE_AFTER = 60.0
+# Back off automatic reconnects after consecutive failures (exponential, from
+# the first value up to the second) so an unreachable scale does not keep the
+# proxy busy or flood the log.
+CONNECT_BACKOFF_START = 60.0
+CONNECT_BACKOFF_MAX = 900.0
 
 
 class IcScaleCoordinator:
@@ -97,6 +115,12 @@ class IcScaleCoordinator:
         # its next reappearance counts as a genuine re-wake (not just the same
         # link still advertising). See _async_watchdog.
         self._slept_since_release = False
+        # Consecutive automatic connect failures and the monotonic time before
+        # which no further automatic attempt is made.
+        self._connect_failures = 0
+        self._retry_after: float | None = None
+        # Last presence seen by the watchdog, to detect a fresh wake.
+        self._present = False
 
     # --- lifecycle --------------------------------------------------------
 
@@ -182,6 +206,7 @@ class IcScaleCoordinator:
         if enabled:
             self._idle_released = False
             self._slept_since_release = False
+            self._async_reset_backoff()
             await self._async_connect()
         else:
             await self._client.disconnect()
@@ -288,6 +313,49 @@ class IcScaleCoordinator:
         self.hass.loop.call_soon_threadsafe(self._async_notify_listeners)
 
 
+    # --- presence ---------------------------------------------------------
+
+    @callback
+    def _async_advertisement_age(self) -> float | None:
+        """Seconds since the last connectable advertisement (None if never seen)."""
+        service_info = bluetooth.async_last_service_info(
+            self.hass, self.address, connectable=True
+        )
+        if service_info is None:
+            return None
+        return max(0.0, time.monotonic() - service_info.time)
+
+    @callback
+    def _async_awake_device(self) -> BLEDevice | None:
+        """Connectable handle, but only while the scale is actually advertising.
+
+        ``async_ble_device_from_address`` answers from HA's connectable history,
+        which outlives the device by minutes: after the scale powers off we keep
+        getting a handle whose connection attempts can only fail ("no scanner
+        currently has it in its discovered devices"). Requiring a recent
+        advertisement makes presence mean "awake and reachable".
+        """
+        device = bluetooth.async_ble_device_from_address(
+            self.hass, self.address, connectable=True
+        )
+        if device is None:
+            return None
+        age = self._async_advertisement_age()
+        if age is None or age > ADVERTISEMENT_STALE_AFTER:
+            _LOGGER.debug(
+                "%s: connectable handle is stale (last advertisement %s); treating as asleep",
+                self.name,
+                f"{age:.0f}s ago" if age is not None else "never",
+            )
+            return None
+        return device
+
+    @callback
+    def _async_reset_backoff(self) -> None:
+        """Allow automatic connect attempts again."""
+        self._connect_failures = 0
+        self._retry_after = None
+
     # --- connection drivers ----------------------------------------------
 
     async def _async_connect(self) -> None:
@@ -310,20 +378,43 @@ class IcScaleCoordinator:
                     self._client.is_connected,
                 )
                 return
-            device = bluetooth.async_ble_device_from_address(
-                self.hass, self.address, connectable=True
-            )
+            now = time.monotonic()
+            if self._retry_after is not None and now < self._retry_after:
+                _LOGGER.debug(
+                    "%s: backing off after %d failed attempt(s); %.0fs left",
+                    self.name,
+                    self._connect_failures,
+                    self._retry_after - now,
+                )
+                return
+            device = self._async_awake_device()
             if device is None:
                 _LOGGER.debug("%s not in range; deferring connect", self.name)
                 return
             _LOGGER.info("%s: Initiating connection attempt to %s", self.name, self.address)
             try:
                 await self._client.connect(device, self._on_disconnected)
-                _LOGGER.info("%s: Connection established successfully", self.name)
-            except Exception as err:  # noqa: BLE001 - log and retry on next advert
-                _LOGGER.error("%s: Connection attempt failed: %s", self.name, err)
+            except Exception as err:  # noqa: BLE001 - log and retry once awake again
+                self._connect_failures += 1
+                delay = min(
+                    CONNECT_BACKOFF_START * 2 ** (self._connect_failures - 1),
+                    CONNECT_BACKOFF_MAX,
+                )
+                self._retry_after = time.monotonic() + delay
+                # Only the first failure is noteworthy: a scale that has powered
+                # itself off fails every time until it is used again, and that is
+                # normal operation rather than something the user must fix.
+                log = _LOGGER.warning if self._connect_failures == 1 else _LOGGER.debug
+                log(
+                    "%s: Connection attempt failed (%d in a row, next try in %.0fs): %s",
+                    self.name,
+                    self._connect_failures,
+                    delay,
+                    err,
+                )
                 return
-
+            _LOGGER.info("%s: Connection established successfully", self.name)
+            self._async_reset_backoff()
 
             # Start the idle clock from the moment we connect.
             self._last_weight_change = time.monotonic()
@@ -364,10 +455,12 @@ class IcScaleCoordinator:
 
         # Not connected: decide whether to reconnect.
         now = time.monotonic()
-        device = bluetooth.async_ble_device_from_address(
-            self.hass, self.address, connectable=True
-        )
-        present = device is not None
+        present = self._async_awake_device() is not None
+        if present and not self._present:
+            # A fresh wake: give a scale that failed to connect while it was on
+            # its way out another chance straight away.
+            self._async_reset_backoff()
+        self._present = present
 
         if self._idle_released:
             # Hold off reconnecting after an idle disconnect until the scale has
@@ -413,6 +506,7 @@ class IcScaleCoordinator:
                 await self._client.connect(device, self._on_disconnected)
             # An explicit action counts as activity (starts the idle clock).
             self._last_weight_change = time.monotonic()
+            self._async_reset_backoff()
         except Exception as err:  # noqa: BLE001
             raise HomeAssistantError(
                 f"{self.name} connect for {description} failed: {err}"
@@ -438,6 +532,7 @@ class IcScaleCoordinator:
         """
         self._idle_released = False
         self._slept_since_release = False
+        self._async_reset_backoff()
         await self._async_ensure_connected("Measure")
         self._last_weight_change = time.monotonic()
         self._async_notify_listeners()

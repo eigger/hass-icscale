@@ -16,9 +16,8 @@ from blesession import (
     Failure,
     SessionTrace,
     build_report,
-    generic_cause,
+    cause_key,
     placement,
-    stages,
 )
 from blesession.hass import radio_facts
 
@@ -46,23 +45,21 @@ _COMMAND_FAILED = "The scale did not accept the {operation} command."
 def likely_cause(failure: Failure, operation: str) -> str | None:
     """The scale's own reading of a failure, or ``None`` for the shared one.
 
-    Where the library has a sentence for the failure (a proxy out of slots, a
-    stack that stopped answering) it is more specific than anything said here,
-    so ``None`` lets ``build_report`` word it and attach ``likely_cause_key``.
+    Where the library has a specific sentence for the failure (a proxy out of
+    slots, a stack that stopped answering) it says more than anything said
+    here, so ``None`` lets ``build_report`` word it and attach
+    ``likely_cause_key``. Only its generic "link could not be established" is
+    replaced by what is known about this scale.
     """
     if operation == OP_LINK_LOST:
         return _LINK_LOST + placement(failure.facts, noun="scale")
-    shared = generic_cause(
-        failure.stage or failure.detail,
-        failure.error,
-        failure.facts,
-        exc=failure.exc,
-        noun="scale",
-    )
-    if shared is not None:
-        return None
-    if failure.stage == stages.CONNECT:
+    key = cause_key(failure.stage or failure.detail, failure.error, exc=failure.exc)
+    if key == "connect.failed":
+        # The library's sentence here is the bare "could not be established";
+        # for this scale the usual reasons are known.
         return _SLEEP_HINT + placement(failure.facts, noun="scale")
+    if key is not None:
+        return None
     if operation in (OP_TARE, OP_POWER_OFF):
         return _COMMAND_FAILED.format(operation=operation.replace("_", " "))
     return None

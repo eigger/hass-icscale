@@ -34,7 +34,9 @@
   "entity": {
     "sensor": {
       "weight": { "name": "무게" },
-      "unit": { "name": "표시 단위" }
+      "unit": { "name": "표시 단위" },
+      "last_error": { "name": "마지막 오류" },
+      "error_count": { "name": "오류 횟수" }
     },
     "binary_sensor": {
       "stable": { "name": "안정" }

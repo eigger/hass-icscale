@@ -122,11 +122,14 @@ class IcScaleClient:
                 except BaseException:
                     # keep=True hands the link to us, so a failed set-up must
                     # close it here.
+                    # A drop during set-up already reached the owner through
+                    # the disconnect callback (which cleared the client).
+                    reported = self._client is not client
                     self._client = None
                     await self._close(client)
-                    # The link was reported up while setting up, so tell the
-                    # owner it is gone again.
-                    if self._on_disconnect is not None:
+                    # The link was visible as up while setting up, so tell the
+                    # owner it is gone, once.
+                    if not reported and self._on_disconnect is not None:
                         self._on_disconnect()
                     raise
 

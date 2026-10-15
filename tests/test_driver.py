@@ -143,8 +143,8 @@ async def test_drop_during_device_info_read_fails_the_connect(monkeypatch) -> No
     with pytest.raises(BleakError):
         await scale.connect(FakeDevice(), lambda: dropped.append(True), None)
     assert not scale.is_connected
-    assert dropped
-    assert fake.disconnects <= 1
+    assert dropped == [True]
+    assert fake.disconnects == 1
 
 
 async def test_late_callback_from_an_old_link_is_ignored(monkeypatch) -> None:

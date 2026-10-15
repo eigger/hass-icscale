@@ -95,6 +95,7 @@ async def test_power_off_ending_the_link_is_not_an_error(
     entry = await setup_entry(hass)
     coordinator = entry.runtime_data
     coordinator._client = SimpleNamespace(
+        state=coordinator.state,
         is_connected=True, power_off=AsyncMock(), disconnect=AsyncMock()
     )
 
@@ -117,6 +118,7 @@ async def test_a_failed_command_is_recorded(
     entry = await setup_entry(hass)
     coordinator = entry.runtime_data
     coordinator._client = SimpleNamespace(
+        state=coordinator.state,
         is_connected=True,
         tare=AsyncMock(side_effect=RuntimeError("write failed")),
         disconnect=AsyncMock(),

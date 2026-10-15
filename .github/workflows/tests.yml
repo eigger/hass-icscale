@@ -44,7 +44,7 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r requirements_test.txt
-          python -c "import json; print('\n'.join(json.load(open('custom_components/icscale/manifest.json'))['requirements']))" > requirements.txt
+          python -c "import json; print('\n'.join(json.load(open('custom_components/icscale/manifest.json')).get('requirements', [])))" > requirements.txt
           pip install -r requirements.txt
           python scripts/ha_component_requirements.py bluetooth bluetooth_adapters recorder > requirements_ha.txt
           pip install -r requirements_ha.txt

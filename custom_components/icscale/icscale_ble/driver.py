@@ -1,7 +1,7 @@
 """Active BLE client for ICOMON-protocol kitchen/coffee scales.
 
-Pure Python: depends only on ``bleak`` / ``bleak-retry-connector`` and the
-sibling modules. No Home Assistant imports — the HA coordinator wraps this.
+Pure Python: depends only on ``bleak`` / ``blesession`` and the sibling
+modules. No Home Assistant imports — the HA coordinator wraps this.
 """
 
 from __future__ import annotations
@@ -13,7 +13,12 @@ from collections.abc import Callable
 from bleak import BleakClient
 from bleak.backends.device import BLEDevice
 from bleak.exc import BleakError
-from bleak_retry_connector import establish_connection
+from blesession import (
+    DISCONNECT_TIMEOUT_S,
+    SessionTrace,
+    ble_session,
+    start_notify_with_recovery,
+)
 
 from .const import (
     CMD_POWER_OFF,
@@ -73,39 +78,50 @@ class IcScaleClient:
         self,
         device: BLEDevice,
         disconnected_callback: DisconnectCallback | None = None,
+        trace: SessionTrace | None = None,
     ) -> None:
-        """Establish a link and subscribe to weight notifications."""
+        """Establish a link and subscribe to weight notifications.
+
+        The link outlives this call (``keep=True``): the scale streams weight
+        for as long as it is held. ``trace`` times the connect and records
+        which radio carried it. On any failure the link is closed again, so a
+        half-set-up connection never holds a proxy slot.
+        """
         async with self._lock:
             if self.is_connected:
                 return
             self._on_disconnect = disconnected_callback
 
-            def _disconnected(_client: BleakClient) -> None:
+            def _disconnected(dropped: BleakClient) -> None:
+                # A late callback from an earlier link must not clear the
+                # client of a newer one.
+                if dropped is not self._client:
+                    return
                 _LOGGER.debug("%s disconnected", self._name)
                 self._client = None
                 if self._on_disconnect is not None:
                     self._on_disconnect()
 
-            client = await establish_connection(
-                BleakClient,
+            async with ble_session(
                 device,
-                self._name,
+                trace=trace,
+                name=self._name,
+                keep=True,
                 disconnected_callback=_disconnected,
-            )
-            self._client = client
-            _LOGGER.debug("%s connected", self._name)
-
-            try:
-                await self._read_device_info()
-                await client.start_notify(NOTIFY_CHAR, self._handle_notification)
-            except Exception:
-                self._client = None
+            ) as client:
+                self._client = client
+                _LOGGER.debug("%s connected", self._name)
                 try:
-                    await client.disconnect()
-                except Exception:
-                    pass
-                raise
-
+                    await self._read_device_info()
+                    await start_notify_with_recovery(
+                        client, NOTIFY_CHAR, self._handle_notification
+                    )
+                except BaseException:
+                    # keep=True hands the link to us, so a failed set-up must
+                    # close it here.
+                    self._client = None
+                    await self._close(client)
+                    raise
 
     async def disconnect(self) -> None:
         """Tear down the GATT link if connected."""
@@ -114,10 +130,15 @@ class IcScaleClient:
             client = self._client
             self._client = None
             if client is not None and client.is_connected:
-                try:
-                    await client.disconnect()
-                except BleakError as err:  # pragma: no cover - best effort
-                    _LOGGER.debug("%s disconnect error: %s", self._name, err)
+                await self._close(client)
+
+    async def _close(self, client: BleakClient) -> None:
+        """Disconnect ``client``, bounded and best effort."""
+        try:
+            async with asyncio.timeout(DISCONNECT_TIMEOUT_S):
+                await client.disconnect()
+        except (BleakError, TimeoutError) as err:
+            _LOGGER.debug("%s disconnect error: %s", self._name, err)
 
     # --- commands ---------------------------------------------------------
 

@@ -4,6 +4,10 @@ on:
   push:
     branches: [main, master]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
   group: tests-${{ github.ref }}
@@ -44,10 +48,10 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r requirements_test.txt
-          python -c "import json; print('\n'.join(json.load(open('custom_components/icscale/manifest.json')).get('requirements', [])))" > requirements.txt
-          pip install -r requirements.txt
-          python scripts/ha_component_requirements.py bluetooth bluetooth_adapters recorder > requirements_ha.txt
-          pip install -r requirements_ha.txt
+          python -c "import json; print('\n'.join(json.load(open('custom_components/icscale/manifest.json')).get('requirements', [])))" > "$RUNNER_TEMP/requirements.txt"
+          pip install -r "$RUNNER_TEMP/requirements.txt"
+          python scripts/ha_component_requirements.py bluetooth bluetooth_adapters recorder > "$RUNNER_TEMP/requirements_ha.txt"
+          pip install -r "$RUNNER_TEMP/requirements_ha.txt"
 
       - name: Run tests
         run: python -m pytest tests/ -v --timeout 120

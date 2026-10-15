@@ -8,12 +8,17 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write
+
+concurrency:
+  group: update-deps
+  cancel-in-progress: false
 
 jobs:
   update-deps:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v5
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -123,6 +128,11 @@ jobs:
           git add custom_components/icscale/manifest.json
           git commit -m "${BUMP_TITLE}"
           git push --force origin "${branch}"
+
+          # Pushes made with the workflow token do not trigger pull_request
+          # workflows, so start the checks explicitly.
+          gh workflow run tests.yml --ref "${branch}"
+          gh workflow run validate.yml --ref "${branch}"
 
           existing_pr="$(gh pr list --head "${branch}" --base main --json number --jq '.[0].number' || true)"
           if [ -n "$existing_pr" ] && [ "$existing_pr" != "null" ]; then

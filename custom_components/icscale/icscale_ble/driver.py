@@ -90,6 +90,9 @@ class IcScaleClient:
         async with self._lock:
             if self.is_connected:
                 return
+            # Whatever was held before is gone; its late callback must not
+            # be taken for this link's.
+            self._client = None
             self._on_disconnect = disconnected_callback
 
             def _disconnected(dropped: BleakClient) -> None:
@@ -121,6 +124,10 @@ class IcScaleClient:
                     # close it here.
                     self._client = None
                     await self._close(client)
+                    # The link was reported up while setting up, so tell the
+                    # owner it is gone again.
+                    if self._on_disconnect is not None:
+                        self._on_disconnect()
                     raise
 
     async def disconnect(self) -> None:
@@ -137,7 +144,7 @@ class IcScaleClient:
         try:
             async with asyncio.timeout(DISCONNECT_TIMEOUT_S):
                 await client.disconnect()
-        except (BleakError, TimeoutError) as err:
+        except Exception as err:  # noqa: BLE001 - never mask the caller's error
             _LOGGER.debug("%s disconnect error: %s", self._name, err)
 
     # --- commands ---------------------------------------------------------

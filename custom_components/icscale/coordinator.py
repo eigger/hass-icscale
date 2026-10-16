@@ -121,6 +121,7 @@ class IcScaleCoordinator:
         self._unsub_advert: CALLBACK_TYPE | None = None
         self._unsub_idle: CALLBACK_TYPE | None = None
         self._closing = False
+        self._coffee_type_saving = False
 
         # Idle / reconnect bookkeeping (monotonic seconds).
         self._last_weight_change: float | None = None
@@ -265,7 +266,12 @@ class IcScaleCoordinator:
     @callback
     def _on_client_update(self, state: ScaleState) -> None:
         # Called from the bleak notification loop; marshal to the HA loop.
-        if state.is_coffee and not self.entry.data.get("is_coffee"):
+        if (
+            state.is_coffee
+            and not self.entry.data.get("is_coffee")
+            and not self._coffee_type_saving
+        ):
+            self._coffee_type_saving = True
             self.hass.async_create_task(self._async_save_coffee_scale_type())
 
         if state.weight is not None:
@@ -704,7 +710,11 @@ class IcScaleCoordinator:
 
     async def _async_save_coffee_scale_type(self) -> None:
         """Save the scale type in config entry and reload to update entities."""
-        new_data = {**self.entry.data, "is_coffee": True}
-        self.hass.config_entries.async_update_entry(self.entry, data=new_data)
-        await self.hass.config_entries.async_reload(self.entry.entry_id)
+        try:
+            new_data = {**self.entry.data, "is_coffee": True}
+            self.hass.config_entries.async_update_entry(self.entry, data=new_data)
+            await self.hass.config_entries.async_reload(self.entry.entry_id)
+        except Exception:
+            self._coffee_type_saving = False
+            raise
 

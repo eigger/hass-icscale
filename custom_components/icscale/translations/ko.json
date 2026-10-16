@@ -34,6 +34,7 @@
   "entity": {
     "sensor": {
       "weight": { "name": "무게" },
+      "stable_weight": { "name": "안정 무게" },
       "unit": { "name": "표시 단위" },
       "last_error": { "name": "마지막 오류" },
       "error_count": { "name": "오류 횟수" }

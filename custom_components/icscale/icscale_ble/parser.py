@@ -46,6 +46,13 @@ def checksum_ok(data: bytes) -> bool:
     return len(data) >= KITCHEN_FRAME_LEN and data[7] == _checksum(data)
 
 
+def is_unit_frame(data: bytes) -> bool:
+    """Return True for a kitchen-scale unit-change frame (package type 0xCC)."""
+    return (
+        KITCHEN_FRAME_LEN <= len(data) <= COFFEE_MIN_LEN and data[1] == PKG_UNIT
+    )
+
+
 def _as_unit(code: int) -> KitchenScaleUnit | None:
     try:
         return KitchenScaleUnit(code)

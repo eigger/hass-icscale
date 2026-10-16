@@ -28,6 +28,11 @@ def _advertising(seconds_ago: float = 0.0):
     return SimpleNamespace(time=time.monotonic() - seconds_ago)
 
 
+def _awake(*_args, **_kwargs):
+    """An advertisement that arrives after whatever just happened."""
+    return _advertising(seconds_ago=-1)
+
+
 async def _tick(hass: HomeAssistant, seconds: float) -> None:
     async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=seconds))
     await hass.async_block_till_done()
@@ -42,7 +47,7 @@ async def test_a_drop_while_still_advertising_is_an_error(
     with patch.object(
         coordinator_module.bluetooth,
         "async_last_service_info",
-        return_value=_advertising(),
+        side_effect=_awake,
     ):
         coordinator._on_disconnected()
         await hass.async_block_till_done()
@@ -65,6 +70,7 @@ async def test_a_drop_with_the_scale_asleep_is_not_an_error(
     ):
         coordinator._on_disconnected()
         await hass.async_block_till_done()
+        assert coordinator._unsub_link_checks
         await _tick(hass, coordinator_module.LINK_LOST_CHECK_DELAY + 1)
 
     assert coordinator.reports.failures == 0
@@ -79,7 +85,7 @@ async def test_a_drop_during_a_connect_is_left_to_that_connect(
     with patch.object(
         coordinator_module.bluetooth,
         "async_last_service_info",
-        return_value=_advertising(),
+        side_effect=_awake,
     ):
         async with coordinator._lock:
             coordinator._on_disconnected()
@@ -103,7 +109,7 @@ async def test_power_off_ending_the_link_is_not_an_error(
     with patch.object(
         coordinator_module.bluetooth,
         "async_last_service_info",
-        return_value=_advertising(),
+        side_effect=_awake,
     ):
         coordinator._on_disconnected()
         await hass.async_block_till_done()
@@ -200,3 +206,86 @@ async def test_error_count_is_restored_after_a_restart(
 
     assert entry.runtime_data.reports.failures == 4
     assert hass.states.get(entity_id).state == "4"
+
+
+async def test_unloading_cancels_a_pending_link_check(
+    hass: HomeAssistant, enable_bluetooth: None
+) -> None:
+    entry = await setup_entry(hass)
+    coordinator = entry.runtime_data
+
+    coordinator._on_disconnected()
+    await hass.async_block_till_done()
+    assert coordinator._unsub_link_checks
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert not coordinator._unsub_link_checks
+
+
+async def test_a_command_that_fails_on_a_dead_link_is_left_to_the_link_check(
+    hass: HomeAssistant, enable_bluetooth: None
+) -> None:
+    entry = await setup_entry(hass)
+    coordinator = entry.runtime_data
+    client = SimpleNamespace(
+        state=coordinator.state, is_connected=True, disconnect=AsyncMock()
+    )
+
+    async def _tare() -> None:
+        client.is_connected = False
+        raise RuntimeError("Scale not connected")
+
+    client.tare = _tare
+    coordinator._client = client
+
+    with pytest.raises(HomeAssistantError):
+        await coordinator.async_tare()
+
+    assert coordinator.reports.failures == 0
+
+
+async def test_the_drop_a_failed_command_caused_is_not_counted_again(
+    hass: HomeAssistant, enable_bluetooth: None
+) -> None:
+    entry = await setup_entry(hass)
+    coordinator = entry.runtime_data
+    coordinator._client = SimpleNamespace(
+        state=coordinator.state,
+        is_connected=True,
+        tare=AsyncMock(side_effect=RuntimeError("write failed")),
+        disconnect=AsyncMock(),
+    )
+
+    with pytest.raises(HomeAssistantError):
+        await coordinator.async_tare()
+    with patch.object(
+        coordinator_module.bluetooth,
+        "async_last_service_info",
+        side_effect=_awake,
+    ):
+        coordinator._on_disconnected()
+        await hass.async_block_till_done()
+        await _tick(hass, coordinator_module.LINK_LOST_CHECK_DELAY + 1)
+
+    assert coordinator.reports.failures == 1
+    assert coordinator.reports.last_failure["operation"] == OP_TARE
+
+
+async def test_an_expected_drop_still_needs_a_fresh_advertisement_to_reconnect(
+    hass: HomeAssistant, enable_bluetooth: None
+) -> None:
+    entry = await setup_entry(hass)
+    coordinator = entry.runtime_data
+    coordinator._client = SimpleNamespace(
+        state=coordinator.state,
+        is_connected=True,
+        power_off=AsyncMock(),
+        disconnect=AsyncMock(),
+    )
+    await coordinator.async_power_off()
+    coordinator._on_disconnected()
+
+    assert coordinator._dropped_at is not None
+    assert not coordinator._unsub_link_checks

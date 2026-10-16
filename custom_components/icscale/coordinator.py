@@ -78,10 +78,13 @@ ADVERTISEMENT_STALE_AFTER = 60.0
 # the first value up to the second) so an unreachable scale does not keep the
 # proxy busy or flood the log.
 # After an unrequested drop, wait this long and count it as an error only if the
-# scale is still advertising: a scale that powered itself off (or was switched
+# scale advertised again: a scale that powered itself off (or was switched
 # off) after use is normal, one that dropped the link while awake is not.
 LINK_LOST_CHECK_DELAY = 10.0
-LINK_LOST_AWAKE_WITHIN = 10.0
+# A drop within this long of a failed command is that command's, not a second error.
+COMMAND_DROP_WINDOW = 10.0
+# A drop within this long after power off is the scale doing as told.
+EXPECTED_DROP_WINDOW = 5.0
 CONNECT_BACKOFF_START = 60.0
 CONNECT_BACKOFF_MAX = 900.0
 
@@ -142,8 +145,10 @@ class IcScaleCoordinator:
         # older than this are from before the drop and say nothing about
         # whether the scale is still awake.
         self._dropped_at: float | None = None
-        # Set when a command is about to end the link (power off).
-        self._expect_drop = False
+        # Until when a drop is expected (power off just succeeded).
+        self._expect_drop_until = 0.0
+        # When a command last failed, so the drop it caused is not a second error.
+        self._command_failed_at: float | None = None
         self._unsub_link_checks: set[CALLBACK_TYPE] = set()
 
     # --- lifecycle --------------------------------------------------------
@@ -346,12 +351,15 @@ class IcScaleCoordinator:
             else None
         )
         self._connected_at = None
-        expected, self._expect_drop = self._expect_drop, False
-        if not expected and not self._closing and not self._lock.locked():
-            self._dropped_at = time.monotonic()
-            self.hass.loop.call_soon_threadsafe(
-                self._async_schedule_link_check, connected_for
-            )
+        if not self._closing and not self._lock.locked():
+            now = time.monotonic()
+            # Even an expected drop means advertisements from before it say
+            # nothing about whether the scale is still awake.
+            self._dropped_at = now
+            if now >= self._expect_drop_until:
+                self.hass.loop.call_soon_threadsafe(
+                    self._async_schedule_link_check, connected_for, now
+                )
         self.hass.loop.call_soon_threadsafe(self._async_notify_listeners)
 
     # --- diagnostics ------------------------------------------------------
@@ -378,11 +386,21 @@ class IcScaleCoordinator:
         self.reports.record(report)
 
     @callback
-    def _async_check_link_lost(self, connected_for: float | None) -> None:
-        """Record an unrequested drop, but only if the scale is still awake."""
-        age = self._async_advertisement_age()
-        if self._closing or age is None or age > LINK_LOST_AWAKE_WITHIN:
+    def _async_check_link_lost(
+        self, connected_for: float | None, dropped_at: float
+    ) -> None:
+        """Record an unrequested drop, but only if the scale advertised again."""
+        service_info = bluetooth.async_last_service_info(
+            self.hass, self.address, connectable=True
+        )
+        if self._closing or service_info is None or service_info.time <= dropped_at:
             _LOGGER.debug("%s: link ended with the scale asleep; not an error", self.name)
+            return
+        if (
+            self._command_failed_at is not None
+            and abs(dropped_at - self._command_failed_at) <= COMMAND_DROP_WINDOW
+        ):
+            _LOGGER.debug("%s: link ended under a failed command; already recorded", self.name)
             return
         trace = SessionTrace()
         if connected_for is not None:
@@ -394,14 +412,18 @@ class IcScaleCoordinator:
         )
 
     @callback
-    def _async_schedule_link_check(self, connected_for: float | None) -> None:
+    def _async_schedule_link_check(
+        self, connected_for: float | None, dropped_at: float
+    ) -> None:
         """Check, shortly, whether the scale is still awake after a drop."""
+        if self._closing:
+            return
         unsub: CALLBACK_TYPE | None = None
 
         @callback
         def _check(_now) -> None:
             self._unsub_link_checks.discard(unsub)
-            self._async_check_link_lost(connected_for)
+            self._async_check_link_lost(connected_for, dropped_at)
 
         unsub = async_call_later(self.hass, LINK_LOST_CHECK_DELAY, _check)
         self._unsub_link_checks.add(unsub)
@@ -525,7 +547,6 @@ class IcScaleCoordinator:
             _LOGGER.info("%s: Connection established successfully", self.name)
             self._connected_at = time.monotonic()
             self._dropped_at = None
-            self._expect_drop = False
             self._async_publish_report(OP_CONNECT, trace, None)
             self._async_reset_backoff()
 
@@ -629,7 +650,6 @@ class IcScaleCoordinator:
                 ) from err
             self._connected_at = time.monotonic()
             self._dropped_at = None
-            self._expect_drop = False
             self._async_publish_report(operation, trace, None)
             # An explicit action counts as activity (starts the idle clock).
             self._last_weight_change = time.monotonic()
@@ -646,6 +666,7 @@ class IcScaleCoordinator:
             # A link that went away under the command is the link check's to
             # report, not a failed command as well.
             if self._client.is_connected:
+                self._command_failed_at = time.monotonic()
                 self._async_publish_report(operation, SessionTrace(), err)
             raise HomeAssistantError(f"{description} failed: {err}") from err
 
@@ -675,7 +696,7 @@ class IcScaleCoordinator:
     async def _power_off(self) -> None:
         """Send the command; the scale ending the link afterwards is expected."""
         await self._client.power_off()
-        self._expect_drop = True
+        self._expect_drop_until = time.monotonic() + EXPECTED_DROP_WINDOW
 
     async def _async_save_coffee_scale_type(self) -> None:
         """Save the scale type in config entry and reload to update entities."""

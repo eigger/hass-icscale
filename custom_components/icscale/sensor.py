@@ -74,6 +74,7 @@ async def async_setup_entry(
             continue
         entities.append(IcScaleSensor(coordinator, description))
 
+    entities.append(IcScaleStableWeightSensor(coordinator))
     entities.append(IcScaleRssiSensor(coordinator))
     entities.append(IcScaleLastErrorSensor(coordinator))
     entities.append(IcScaleErrorCountSensor(coordinator))
@@ -97,8 +98,9 @@ class IcScaleSensor(IcScaleEntity, RestoreEntity, SensorEntity):
 
     @property
     def native_value(self) -> float | int | str | None:
-        """Return the current value from the coordinator state."""
-        return self.entity_description.value_fn(self.coordinator.state)
+        """Return the live value, else the restored one until a reading arrives."""
+        value = self.entity_description.value_fn(self.coordinator.state)
+        return value if value is not None else self._attr_native_value
 
     async def async_added_to_hass(self) -> None:
         """Handle entity about to be added to hass."""
@@ -106,21 +108,7 @@ class IcScaleSensor(IcScaleEntity, RestoreEntity, SensorEntity):
         if (last_state := await self.async_get_last_state()) is not None and last_state.state not in (None, "unknown", "unavailable"):
             if self.entity_description.key == "weight":
                 try:
-                    val = float(last_state.state)
-                    from .icscale_ble import WeightSample
-                    if self.coordinator.state.weight is None:
-                        self.coordinator.state.weight = WeightSample(
-                            grams=val,
-                            stable=True,
-                        )
-                    else:
-                        w = self.coordinator.state.weight
-                        self.coordinator.state.weight = WeightSample(
-                            grams=val,
-                            stable=w.stable,
-                            unit=w.unit,
-                            precision=w.precision,
-                        )
+                    self._attr_native_value = float(last_state.state)
                 except (ValueError, TypeError):
                     pass
             elif self.entity_description.key == "unit":
@@ -138,6 +126,49 @@ class IcScaleSensor(IcScaleEntity, RestoreEntity, SensorEntity):
             return False
         return super().available
 
+
+
+class IcScaleStableWeightSensor(IcScaleEntity, RestoreEntity, SensorEntity):
+    """Last weight read while the scale's stable flag was on.
+
+    It follows every stable frame and keeps its value while the live weight is
+    unstable, the scale is idle or the connection is down.
+    """
+
+    _attr_device_class = SensorDeviceClass.WEIGHT
+    _attr_native_unit_of_measurement = GRAMS
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 1
+    _attr_icon = "mdi:scale-check"
+    _attr_translation_key = "stable_weight"
+
+    def __init__(self, coordinator: IcScaleCoordinator) -> None:
+        """Initialize the stable weight sensor."""
+        super().__init__(coordinator, "stable_weight")
+        self._attr_native_value: float | None = None
+
+    async def async_added_to_hass(self) -> None:
+        """Restore the previous stable weight."""
+        await super().async_added_to_hass()
+        if (
+            last_state := await self.async_get_last_state()
+        ) is not None and last_state.state not in _UNRESTORABLE:
+            try:
+                self._attr_native_value = float(last_state.state)
+            except ValueError:
+                pass
+
+    @callback
+    def _handle_update(self) -> None:
+        weight = self.coordinator.state.weight
+        if weight is not None and weight.stable:
+            self._attr_native_value = weight.grams
+        self.async_write_ha_state()
+
+    @property
+    def available(self) -> bool:
+        """Keep showing the last stable weight while the scale is away."""
+        return self._attr_native_value is not None or super().available
 
 
 class IcScaleRssiSensor(IcScaleEntity, SensorEntity):

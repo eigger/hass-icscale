@@ -48,3 +48,10 @@ def test_coffee_frame() -> None:
     assert sample is not None
     assert sample.stable
     assert sample.grams == 1.0
+
+
+def test_is_unit_frame() -> None:
+    from custom_components.icscale.icscale_ble.parser import is_unit_frame
+
+    assert is_unit_frame(_kitchen(0xCC, 0x00, 0, unit=1))
+    assert not is_unit_frame(_kitchen(0xCA, 0x00, 10))

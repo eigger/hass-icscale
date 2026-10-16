@@ -66,25 +66,10 @@ class IcScaleStableSensor(IcScaleEntity, RestoreEntity, BinarySensorEntity):
     def is_on(self) -> bool | None:
         """Return True when the last weight frame was a stable reading."""
         weight = self.coordinator.state.weight
-        return weight.stable if weight is not None else None
+        return weight.stable if weight is not None else self._attr_is_on
 
     async def async_added_to_hass(self) -> None:
         """Handle entity about to be added to hass."""
         await super().async_added_to_hass()
         if (last_state := await self.async_get_last_state()) is not None and last_state.state not in (None, "unknown", "unavailable"):
-            stable = last_state.state == "on"
-            from .icscale_ble import WeightSample
-            if self.coordinator.state.weight is None:
-                self.coordinator.state.weight = WeightSample(
-                    grams=0.0,
-                    stable=stable,
-                )
-            else:
-                w = self.coordinator.state.weight
-                self.coordinator.state.weight = WeightSample(
-                    grams=w.grams,
-                    stable=stable,
-                    unit=w.unit,
-                    precision=w.precision,
-                )
-
+            self._attr_is_on = last_state.state == "on"

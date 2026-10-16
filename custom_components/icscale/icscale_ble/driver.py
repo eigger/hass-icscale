@@ -31,7 +31,7 @@ from .const import (
     WRITE_CHAR,
 )
 from .models import DeviceInfo, ScaleState
-from .parser import COFFEE_MIN_LEN, parse_notification
+from .parser import COFFEE_MIN_LEN, checksum_ok, is_unit_frame, parse_notification
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -193,6 +193,9 @@ class IcScaleClient:
 
     def _handle_notification(self, _sender: int, data: bytearray) -> None:
         raw = bytes(data)
+        if not checksum_ok(raw):
+            _LOGGER.debug("%s: bad checksum, dropping %s", self._name, raw.hex(" "))
+            return
         sample = parse_notification(raw)
         if sample is None:
             _LOGGER.debug("%s: unrecognised frame %s", self._name, raw.hex(" "))
@@ -207,9 +210,11 @@ class IcScaleClient:
             sample.grams,
             sample.stable,
         )
-        self._state.weight = sample
         if sample.unit is not None:
             self._state.unit = sample.unit
+        # A unit-change frame carries no reading: keep weight/stable as-is.
+        if not is_unit_frame(raw):
+            self._state.weight = sample
         self._notify()
 
     def _notify(self) -> None:

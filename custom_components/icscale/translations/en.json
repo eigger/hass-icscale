@@ -34,6 +34,7 @@
   "entity": {
     "sensor": {
       "weight": { "name": "Weight" },
+      "stable_weight": { "name": "Stable weight" },
       "unit": { "name": "Display unit" },
       "last_error": { "name": "Last error" },
       "error_count": { "name": "Error count" }

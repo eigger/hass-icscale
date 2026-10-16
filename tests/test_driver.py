@@ -167,3 +167,42 @@ async def test_late_callback_from_an_old_link_is_ignored(monkeypatch) -> None:
 
     assert dropped == []
     assert scale.is_connected
+
+
+def _kitchen_frame(pkg: int, magnitude: int, unit: int = 0) -> bytes:
+    body = [0x00, (magnitude >> 16) & 0xFF, (magnitude >> 8) & 0xFF, magnitude & 0xFF, unit]
+    return bytes([0xAC, pkg, *body, sum(body) & 0xFF])
+
+
+async def test_bad_checksum_frame_is_dropped(monkeypatch) -> None:
+    fake = ScaleFakeClient()
+    _patch(monkeypatch, fake)
+    scale = IcScaleClient("Scale")
+    updates = []
+    scale.set_update_callback(updates.append)
+    await scale.connect(FakeDevice(), None, SessionTrace())
+
+    bad = bytearray(KITCHEN_FRAME)
+    bad[7] ^= 0xFF
+    fake.reply(bytes(bad))
+
+    assert not updates
+    assert scale.state.weight is None
+
+
+async def test_unit_frame_updates_only_the_unit(monkeypatch) -> None:
+    fake = ScaleFakeClient()
+    _patch(monkeypatch, fake)
+    scale = IcScaleClient("Scale")
+    updates = []
+    scale.set_update_callback(updates.append)
+    await scale.connect(FakeDevice(), None, SessionTrace())
+
+    fake.reply(_kitchen_frame(0xCE, 500))  # unstable 500 g
+    before = scale.state.weight
+    assert before is not None and not before.stable
+
+    fake.reply(_kitchen_frame(0xCC, 0, unit=1))
+    assert scale.state.weight is before
+    assert scale.state.unit is not None
+    assert len(updates) == 2

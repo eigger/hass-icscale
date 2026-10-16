@@ -566,7 +566,7 @@ class IcScaleCoordinator:
         further advertisement callbacks arrive. Polling presence here closes
         that gap.
         """
-        if self._closing or not self.enabled:
+        if self._closing:
             return
 
         if self._client.is_connected:
@@ -588,6 +588,9 @@ class IcScaleCoordinator:
             return
 
         # Not connected: decide whether to reconnect.
+        if not self.enabled:
+            return
+
         now = time.monotonic()
         present = self._async_awake_device() is not None
         if present and not self._present:
@@ -669,6 +672,7 @@ class IcScaleCoordinator:
                 self._command_failed_at = time.monotonic()
                 self._async_publish_report(operation, SessionTrace(), err)
             raise HomeAssistantError(f"{description} failed: {err}") from err
+        self._last_weight_change = time.monotonic()
 
     async def async_measure_now(self) -> None:
         """Force an immediate connect + stream, regardless of idle/standby state.

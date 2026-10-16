@@ -16,6 +16,7 @@ A custom integration for Home Assistant to connect and read weight data directly
 - **Live Weight Sensor**: Real-time grams, streamed over the connection while the scale is in use
 - **Stability Status**: Binary sensor indicating whether the weight has settled
 - **Display Unit Sensor**: Diagnostic sensor showing the current unit configured on the scale
+- **Last error / Error count Sensors**: Diagnostic sensors with the most recent failed session (connect, command or unexpected link loss, with the likely cause and the radio used) and how many have failed; they survive restarts (Error count is disabled by default)
 - **Automatic measurement Switch**: When on, HA auto-connects and streams weight while the scale is awake; turn it off to free the scale's Bluetooth for the phone app (single-connection devices)
 - **Idle auto-disconnect**: Releases the scale after a configurable idle period so it can power off; reconnects automatically when used again
 - **Measure now**: Button that forces an immediate connection and reading, for deterministic on-demand measurement regardless of the automatic connection state

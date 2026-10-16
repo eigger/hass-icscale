@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
+from typing import Any
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -16,9 +18,10 @@ from homeassistant.const import (
     EntityCategory,
     UnitOfMass,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.util import dt as dt_util
 
 
 from .coordinator import IcScaleCoordinator
@@ -72,6 +75,8 @@ async def async_setup_entry(
         entities.append(IcScaleSensor(coordinator, description))
 
     entities.append(IcScaleRssiSensor(coordinator))
+    entities.append(IcScaleLastErrorSensor(coordinator))
+    entities.append(IcScaleErrorCountSensor(coordinator))
     async_add_entities(entities)
 
 
@@ -157,3 +162,113 @@ class IcScaleRssiSensor(IcScaleEntity, SensorEntity):
     def available(self) -> bool:
         """RSSI is available whenever we have a reading."""
         return self.coordinator.rssi is not None
+
+
+# Attributes Home Assistant adds to a state itself; they are not part of a report.
+_HA_STATE_ATTRIBUTES = frozenset(
+    {
+        "friendly_name",
+        "icon",
+        "device_class",
+        "entity_category",
+        "entity_picture",
+        "restored",
+        "supported_features",
+    }
+)
+_UNRESTORABLE = (None, "unknown", "unavailable")
+
+
+class _IcScaleReportsEntity(IcScaleEntity, RestoreEntity, SensorEntity):
+    """Base for diagnostics that read the coordinator's session reports.
+
+    They survive a restart: a failure at 3 am is still readable after Home
+    Assistant restarted, because a success never erases the evidence.
+    """
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    async def async_added_to_hass(self) -> None:
+        """Subscribe to new reports and restore what the last run recorded."""
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            self.coordinator.reports.add_listener(self._handle_report)
+        )
+        if (last_state := await self.async_get_last_state()) is not None:
+            self._restore(last_state.state, dict(last_state.attributes))
+
+    def _restore(self, state: str, attributes: dict[str, Any]) -> None:
+        """Seed the reports from the previous run, unless a new one has begun."""
+        raise NotImplementedError
+
+    @callback
+    def _handle_report(self) -> None:
+        self.async_write_ha_state()
+
+
+class IcScaleLastErrorSensor(_IcScaleReportsEntity):
+    """When a BLE session last failed, with that session's breakdown.
+
+    The attributes say which stage failed, over which radio, and what it most
+    likely means. They are kept until the next failure. A scale that is simply
+    asleep is not an error: connect attempts skipped for it are not recorded.
+    """
+
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_icon = "mdi:clock-alert-outline"
+    _attr_translation_key = "last_error"
+
+    def __init__(self, coordinator: IcScaleCoordinator) -> None:
+        """Initialize the last error sensor."""
+        super().__init__(coordinator, "last_error")
+
+    @property
+    def native_value(self) -> datetime | None:
+        """When the last failed session ended."""
+        return self.coordinator.reports.last_failure_at
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """The breakdown of the session that failed at this time."""
+        return self.coordinator.reports.last_failure
+
+    def _restore(self, state: str, attributes: dict[str, Any]) -> None:
+        reports = self.coordinator.reports
+        if reports.last_failure is not None or state in _UNRESTORABLE:
+            return
+        failed_at = dt_util.parse_datetime(state)
+        if failed_at is None:
+            return
+        reports.last_failure_at = dt_util.as_utc(failed_at)
+        reports.last_failure = {
+            key: value
+            for key, value in attributes.items()
+            if key not in _HA_STATE_ATTRIBUTES
+        }
+
+
+class IcScaleErrorCountSensor(_IcScaleReportsEntity):
+    """How many BLE sessions have failed (connects and commands)."""
+
+    _attr_icon = "mdi:alert-circle-outline"
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_entity_registry_enabled_default = False
+    _attr_translation_key = "error_count"
+
+    def __init__(self, coordinator: IcScaleCoordinator) -> None:
+        """Initialize the error count sensor."""
+        super().__init__(coordinator, "error_count")
+
+    @property
+    def native_value(self) -> int:
+        """Failed sessions so far."""
+        return self.coordinator.reports.failures
+
+    def _restore(self, state: str, attributes: dict[str, Any]) -> None:
+        reports = self.coordinator.reports
+        if reports.failures or state in _UNRESTORABLE:
+            return
+        try:
+            reports.failures = int(float(state))
+        except ValueError:
+            return

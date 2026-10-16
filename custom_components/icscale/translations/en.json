@@ -34,7 +34,9 @@
   "entity": {
     "sensor": {
       "weight": { "name": "Weight" },
-      "unit": { "name": "Display unit" }
+      "unit": { "name": "Display unit" },
+      "last_error": { "name": "Last error" },
+      "error_count": { "name": "Error count" }
     },
     "binary_sensor": {
       "stable": { "name": "Stable" }

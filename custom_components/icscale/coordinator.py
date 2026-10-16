@@ -28,14 +28,23 @@ import time
 from collections.abc import Awaitable, Callable
 from datetime import timedelta
 
+from blesession import SessionDropped, SessionReports, SessionTrace, fallback_report
 from homeassistant.components import bluetooth
 from homeassistant.components.bluetooth import BluetoothChange, BluetoothScanningMode
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.event import async_call_later, async_track_time_interval
 
 from .const import DEFAULT_MODEL
 from .icscale_ble import IcScaleClient, ScaleState
+from .session_report import (
+    OP_CONNECT,
+    OP_LINK_LOST,
+    OP_MEASURE,
+    OP_POWER_OFF,
+    OP_TARE,
+    build_session_report,
+)
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -68,6 +77,14 @@ ADVERTISEMENT_STALE_AFTER = 60.0
 # Back off automatic reconnects after consecutive failures (exponential, from
 # the first value up to the second) so an unreachable scale does not keep the
 # proxy busy or flood the log.
+# After an unrequested drop, wait this long and count it as an error only if the
+# scale advertised again: a scale that powered itself off (or was switched
+# off) after use is normal, one that dropped the link while awake is not.
+LINK_LOST_CHECK_DELAY = 10.0
+# A drop within this long of a failed command is that command's, not a second error.
+COMMAND_DROP_WINDOW = 10.0
+# A drop within this long after power off is the scale doing as told.
+EXPECTED_DROP_WINDOW = 5.0
 CONNECT_BACKOFF_START = 60.0
 CONNECT_BACKOFF_MAX = 900.0
 
@@ -121,6 +138,18 @@ class IcScaleCoordinator:
         self._retry_after: float | None = None
         # Last presence seen by the watchdog, to detect a fresh wake.
         self._present = False
+        # The diagnostic sensors read these; a success never erases a failure.
+        self.reports = SessionReports()
+        self._connected_at: float | None = None
+        # Monotonic time of the last drop we did not ask for. Advertisements
+        # older than this are from before the drop and say nothing about
+        # whether the scale is still awake.
+        self._dropped_at: float | None = None
+        # Until when a drop is expected (power off just succeeded).
+        self._expect_drop_until = 0.0
+        # When a command last failed, so the drop it caused is not a second error.
+        self._command_failed_at: float | None = None
+        self._unsub_link_checks: set[CALLBACK_TYPE] = set()
 
     # --- lifecycle --------------------------------------------------------
 
@@ -169,6 +198,9 @@ class IcScaleCoordinator:
         if self._unsub_idle is not None:
             self._unsub_idle()
             self._unsub_idle = None
+        for unsub in list(self._unsub_link_checks):
+            unsub()
+        self._unsub_link_checks.clear()
         await self._client.disconnect()
 
 
@@ -309,9 +341,92 @@ class IcScaleCoordinator:
 
     @callback
     def _on_disconnected(self) -> None:
+        # The driver only calls this for a drop we did not ask for (a deliberate
+        # disconnect clears the callback first). While a connect holds the lock
+        # that attempt reports its own failure, so it is not recorded twice.
         _LOGGER.info("%s: Connection disconnected (GATT link lost)", self.name)
+        connected_for = (
+            time.monotonic() - self._connected_at
+            if self._connected_at is not None
+            else None
+        )
+        self._connected_at = None
+        if not self._closing and not self._lock.locked():
+            now = time.monotonic()
+            # Even an expected drop means advertisements from before it say
+            # nothing about whether the scale is still awake.
+            self._dropped_at = now
+            if now >= self._expect_drop_until:
+                self.hass.loop.call_soon_threadsafe(
+                    self._async_schedule_link_check, connected_for, now
+                )
         self.hass.loop.call_soon_threadsafe(self._async_notify_listeners)
 
+    # --- diagnostics ------------------------------------------------------
+
+    @callback
+    def _async_publish_report(
+        self, operation: str, trace: SessionTrace, exc: BaseException | None
+    ) -> None:
+        """File one finished session where the diagnostic sensors read it.
+
+        Diagnostics must never mask the session's own outcome: a report that
+        cannot be built is replaced by ``fallback_report`` so the session is
+        still counted.
+        """
+        try:
+            report = build_session_report(
+                self.hass, self.address, operation=operation, trace=trace, exc=exc
+            )
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.debug("%s: building the session report failed: %s", self.name, err)
+            report = fallback_report(operation, trace=trace, exc=exc)
+        else:
+            _LOGGER.debug("%s: session report (%s): %s", self.name, operation, report)
+        self.reports.record(report)
+
+    @callback
+    def _async_check_link_lost(
+        self, connected_for: float | None, dropped_at: float
+    ) -> None:
+        """Record an unrequested drop, but only if the scale advertised again."""
+        service_info = bluetooth.async_last_service_info(
+            self.hass, self.address, connectable=True
+        )
+        if self._closing or service_info is None or service_info.time <= dropped_at:
+            _LOGGER.debug("%s: link ended with the scale asleep; not an error", self.name)
+            return
+        if (
+            self._command_failed_at is not None
+            and abs(dropped_at - self._command_failed_at) <= COMMAND_DROP_WINDOW
+        ):
+            _LOGGER.debug("%s: link ended under a failed command; already recorded", self.name)
+            return
+        trace = SessionTrace()
+        if connected_for is not None:
+            trace.note(connected_s=round(connected_for, 1))
+        self._async_publish_report(
+            OP_LINK_LOST,
+            trace,
+            SessionDropped("The scale closed the connection"),
+        )
+
+    @callback
+    def _async_schedule_link_check(
+        self, connected_for: float | None, dropped_at: float
+    ) -> None:
+        """Check, shortly, whether the scale is still awake after a drop."""
+        if self._closing:
+            return
+        unsub: CALLBACK_TYPE | None = None
+
+        @callback
+        def _check(_now) -> None:
+            self._unsub_link_checks.discard(unsub)
+            self._async_check_link_lost(connected_for, dropped_at)
+
+        unsub = async_call_later(self.hass, LINK_LOST_CHECK_DELAY, _check)
+        self._unsub_link_checks.add(unsub)
 
     # --- presence ---------------------------------------------------------
 
@@ -341,6 +456,16 @@ class IcScaleCoordinator:
         if device is None:
             return None
         age = self._async_advertisement_age()
+        if self._dropped_at is not None:
+            service_info = bluetooth.async_last_service_info(
+                self.hass, self.address, connectable=True
+            )
+            if service_info is None or service_info.time <= self._dropped_at:
+                _LOGGER.debug(
+                    "%s: no advertisement since the link dropped; treating as asleep",
+                    self.name,
+                )
+                return None
         if age is None or age > ADVERTISEMENT_STALE_AFTER:
             _LOGGER.debug(
                 "%s: connectable handle is stale (last advertisement %s); treating as asleep",
@@ -392,8 +517,9 @@ class IcScaleCoordinator:
                 _LOGGER.debug("%s not in range; deferring connect", self.name)
                 return
             _LOGGER.info("%s: Initiating connection attempt to %s", self.name, self.address)
+            trace = SessionTrace()
             try:
-                await self._client.connect(device, self._on_disconnected)
+                await self._client.connect(device, self._on_disconnected, trace)
             except Exception as err:  # noqa: BLE001 - log and retry once awake again
                 self._connect_failures += 1
                 delay = min(
@@ -401,6 +527,11 @@ class IcScaleCoordinator:
                     CONNECT_BACKOFF_MAX,
                 )
                 self._retry_after = time.monotonic() + delay
+                trace.note(
+                    consecutive_failures=self._connect_failures,
+                    next_retry_in_s=round(delay),
+                )
+                self._async_publish_report(OP_CONNECT, trace, err)
                 # Only the first failure is noteworthy: a scale that has powered
                 # itself off fails every time until it is used again, and that is
                 # normal operation rather than something the user must fix.
@@ -414,6 +545,9 @@ class IcScaleCoordinator:
                 )
                 return
             _LOGGER.info("%s: Connection established successfully", self.name)
+            self._connected_at = time.monotonic()
+            self._dropped_at = None
+            self._async_publish_report(OP_CONNECT, trace, None)
             self._async_reset_backoff()
 
             # Start the idle clock from the moment we connect.
@@ -492,34 +626,48 @@ class IcScaleCoordinator:
 
     # --- commands ---------------------------------------------------------
 
-    async def _async_ensure_connected(self, description: str) -> None:
+    async def _async_ensure_connected(self, description: str, operation: str) -> None:
         """Connect on demand for an explicit user action; raise if unreachable."""
         if self._client.is_connected:
             return
-        device = bluetooth.async_ble_device_from_address(
-            self.hass, self.address, connectable=True
-        )
-        if device is None:
-            raise HomeAssistantError(f"{self.name} not in range (turn the scale on)")
-        try:
-            async with self._lock:
-                await self._client.connect(device, self._on_disconnected)
+        async with self._lock:
+            # Another task (the watchdog, an advertisement) may have connected
+            # while this one waited for the lock.
+            if self._client.is_connected:
+                return
+            device = self._async_awake_device()
+            if device is None:
+                raise HomeAssistantError(
+                    f"{self.name} not in range (turn the scale on)"
+                )
+            trace = SessionTrace()
+            try:
+                await self._client.connect(device, self._on_disconnected, trace)
+            except Exception as err:  # noqa: BLE001
+                self._async_publish_report(operation, trace, err)
+                raise HomeAssistantError(
+                    f"{self.name} connect for {description} failed: {err}"
+                ) from err
+            self._connected_at = time.monotonic()
+            self._dropped_at = None
+            self._async_publish_report(operation, trace, None)
             # An explicit action counts as activity (starts the idle clock).
             self._last_weight_change = time.monotonic()
             self._async_reset_backoff()
-        except Exception as err:  # noqa: BLE001
-            raise HomeAssistantError(
-                f"{self.name} connect for {description} failed: {err}"
-            ) from err
 
     async def _async_run_command(
-        self, action: Callable[[], Awaitable[None]], description: str
+        self, action: Callable[[], Awaitable[None]], description: str, operation: str
     ) -> None:
         """Run a control command, connecting on demand if needed."""
-        await self._async_ensure_connected(description)
+        await self._async_ensure_connected(description, operation)
         try:
             await action()
         except Exception as err:  # noqa: BLE001
+            # A link that went away under the command is the link check's to
+            # report, not a failed command as well.
+            if self._client.is_connected:
+                self._command_failed_at = time.monotonic()
+                self._async_publish_report(operation, SessionTrace(), err)
             raise HomeAssistantError(f"{description} failed: {err}") from err
 
     async def async_measure_now(self) -> None:
@@ -533,17 +681,22 @@ class IcScaleCoordinator:
         self._idle_released = False
         self._slept_since_release = False
         self._async_reset_backoff()
-        await self._async_ensure_connected("Measure")
+        await self._async_ensure_connected("Measure", OP_MEASURE)
         self._last_weight_change = time.monotonic()
         self._async_notify_listeners()
 
     async def async_tare(self) -> None:
         """Zero the scale."""
-        await self._async_run_command(self._client.tare, "Tare")
+        await self._async_run_command(self._client.tare, "Tare", OP_TARE)
 
     async def async_power_off(self) -> None:
         """Power the scale off."""
-        await self._async_run_command(self._client.power_off, "Power off")
+        await self._async_run_command(self._power_off, "Power off", OP_POWER_OFF)
+
+    async def _power_off(self) -> None:
+        """Send the command; the scale ending the link afterwards is expected."""
+        await self._client.power_off()
+        self._expect_drop_until = time.monotonic() + EXPECTED_DROP_WINDOW
 
     async def _async_save_coffee_scale_type(self) -> None:
         """Save the scale type in config entry and reload to update entities."""

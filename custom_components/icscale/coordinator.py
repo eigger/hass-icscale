@@ -710,7 +710,11 @@ class IcScaleCoordinator:
 
     async def _async_save_coffee_scale_type(self) -> None:
         """Save the scale type in config entry and reload to update entities."""
-        new_data = {**self.entry.data, "is_coffee": True}
-        self.hass.config_entries.async_update_entry(self.entry, data=new_data)
-        await self.hass.config_entries.async_reload(self.entry.entry_id)
+        try:
+            new_data = {**self.entry.data, "is_coffee": True}
+            self.hass.config_entries.async_update_entry(self.entry, data=new_data)
+            await self.hass.config_entries.async_reload(self.entry.entry_id)
+        except Exception:
+            self._coffee_type_saving = False
+            raise
 

@@ -102,3 +102,17 @@ async def test_stable_weight_restore() -> None:
     _restore(entity, "7.5")
     await entity.async_added_to_hass()
     assert entity.native_value == 7.5
+
+
+async def test_coffee_save_failure_resets_guard() -> None:
+    hass = MagicMock()
+    hass.config_entries.async_update_entry.side_effect = RuntimeError("boom")
+    coordinator = IcScaleCoordinator.__new__(IcScaleCoordinator)
+    coordinator.hass = hass
+    coordinator.entry = SimpleNamespace(data={}, entry_id="x")
+    coordinator._coffee_type_saving = True
+    try:
+        await coordinator._async_save_coffee_scale_type()
+    except RuntimeError:
+        pass
+    assert coordinator._coffee_type_saving is False

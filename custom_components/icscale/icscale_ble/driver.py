@@ -31,7 +31,13 @@ from .const import (
     WRITE_CHAR,
 )
 from .models import DeviceInfo, ScaleState
-from .parser import COFFEE_MIN_LEN, checksum_ok, is_unit_frame, parse_notification
+from .parser import (
+    COFFEE_MIN_LEN,
+    KITCHEN_FRAME_LEN,
+    checksum_ok,
+    is_unit_frame,
+    parse_notification,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -48,7 +54,8 @@ class IcScaleClient:
     """
 
     def __init__(self, name: str = "Scale") -> None:
-        """Initialize an idle client."""
+        self._name = name
+        self._warned_checksum = False
         self._name = name
         self._client: BleakClient | None = None
         self._lock = asyncio.Lock()
@@ -193,8 +200,11 @@ class IcScaleClient:
 
     def _handle_notification(self, _sender: int, data: bytearray) -> None:
         raw = bytes(data)
-        if not checksum_ok(raw):
-            _LOGGER.debug("%s: bad checksum, dropping %s", self._name, raw.hex(" "))
+        if len(raw) >= KITCHEN_FRAME_LEN and not checksum_ok(raw):
+            # Warn once so a variant with another checksum is not silent.
+            log = _LOGGER.debug if self._warned_checksum else _LOGGER.warning
+            self._warned_checksum = True
+            log("%s: bad checksum, dropping %s", self._name, raw.hex(" "))
             return
         sample = parse_notification(raw)
         if sample is None:

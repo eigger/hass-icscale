@@ -139,7 +139,7 @@ class IcScaleStableWeightSensor(IcScaleEntity, RestoreEntity, SensorEntity):
     _attr_native_unit_of_measurement = GRAMS
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_suggested_display_precision = 1
-    _attr_icon = "mdi:scale-check"
+    _attr_icon = "mdi:scale-balance"
     _attr_translation_key = "stable_weight"
 
     def __init__(self, coordinator: IcScaleCoordinator) -> None:

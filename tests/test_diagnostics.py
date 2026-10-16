@@ -34,8 +34,9 @@ async def test_diagnostics_start_empty_and_are_diagnostic(
 
     assert last_error.entity_category is EntityCategory.DIAGNOSTIC
     assert error_count.entity_category is EntityCategory.DIAGNOSTIC
-    assert error_count.disabled_by is er.RegistryEntryDisabler.INTEGRATION
+    assert error_count.disabled_by is None
     assert hass.states.get(last_error.entity_id).state == "unknown"
+    assert hass.states.get(error_count.entity_id).state == "0"
 
 
 async def test_a_failure_is_published_and_kept_after_a_success(

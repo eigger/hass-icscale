@@ -252,7 +252,6 @@ class IcScaleErrorCountSensor(_IcScaleReportsEntity):
 
     _attr_icon = "mdi:alert-circle-outline"
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
-    _attr_entity_registry_enabled_default = False
     _attr_translation_key = "error_count"
 
     def __init__(self, coordinator: IcScaleCoordinator) -> None:

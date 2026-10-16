@@ -289,3 +289,54 @@ async def test_an_expected_drop_still_needs_a_fresh_advertisement_to_reconnect(
 
     assert coordinator._dropped_at is not None
     assert not coordinator._unsub_link_checks
+
+
+async def test_an_advertisement_from_before_the_drop_does_not_make_it_an_error(
+    hass: HomeAssistant, enable_bluetooth: None
+) -> None:
+    entry = await setup_entry(hass)
+    coordinator = entry.runtime_data
+
+    with patch.object(
+        coordinator_module.bluetooth,
+        "async_last_service_info",
+        return_value=_advertising(),
+    ):
+        coordinator._on_disconnected()
+        await hass.async_block_till_done()
+        await _tick(hass, coordinator_module.LINK_LOST_CHECK_DELAY + 1)
+
+    assert coordinator.reports.failures == 0
+
+
+async def test_a_drop_after_the_expected_window_is_checked(
+    hass: HomeAssistant, enable_bluetooth: None
+) -> None:
+    entry = await setup_entry(hass)
+    coordinator = entry.runtime_data
+    coordinator._client = SimpleNamespace(
+        state=coordinator.state,
+        is_connected=True,
+        power_off=AsyncMock(),
+        disconnect=AsyncMock(),
+    )
+    await coordinator.async_power_off()
+    assert coordinator._expect_drop_until > time.monotonic()
+
+    coordinator._expect_drop_until = time.monotonic() - 1
+    coordinator._on_disconnected()
+    await hass.async_block_till_done()
+
+    assert coordinator._unsub_link_checks
+
+
+async def test_no_link_check_is_armed_while_closing(
+    hass: HomeAssistant, enable_bluetooth: None
+) -> None:
+    entry = await setup_entry(hass)
+    coordinator = entry.runtime_data
+
+    coordinator._closing = True
+    coordinator._async_schedule_link_check(None, time.monotonic())
+
+    assert not coordinator._unsub_link_checks

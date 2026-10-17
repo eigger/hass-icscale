@@ -2,12 +2,12 @@
 
 - 표준: https://github.com/eigger/hass-repo-standards/tree/main
 - 참조 커밋 SHA: 78d242092eac732a1af48770e77e3f51e566c6c2
-- 채택일: 2026-10-17 (채택 변경은 아직 커밋/PR 전)
+- 채택일: 2026-10-17 (PR #17, 4350ddf)
 - profile: integration / ha (실제 HA fixture·통합 로딩 필수)
 - 적용 점검표: [ADOPTION_CHECKLIST.md](ADOPTION_CHECKLIST.md)
 - 중앙 현황표: https://github.com/eigger/hass-repo-standards/blob/main/docs/adoption-status.md
 - 조율 / 구현 / 독립 리뷰·검증 담당: 구현은 Claude Code 주 에이전트, 독립 리뷰는 별도 Opus 서브 에이전트(2026-10-17, 지적 반영 후 재검증 필요)
-- 중앙 현황 갱신일: 미등록 (외부 리포이므로 갱신하지 않음; 반영할 내용은 ADOPTION_CHECKLIST.md 참조)
+- 중앙 현황 갱신일: 2026-10-17 (hass-repo-standards b7d7493)
 - 실제 기본 브랜치: main
 - 테스트 경로: tests/components/icscale/
 - 변경 전 지원 최소 HA / 선언 근거: 2025.2.0 / hacs.json

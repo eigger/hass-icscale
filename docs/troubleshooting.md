@@ -1,12 +1,12 @@
 # Troubleshooting
 
-See also the shared [Bluetooth troubleshooting order](https://github.com/eigger/hass-repo-standards/blob/main/docs/bluetooth.md#연결-문제-확인-순서) (Korean) and [proxy setup](https://github.com/eigger/hass-repo-standards/blob/main/docs/bluetooth.md).
+See [Bluetooth proxy setup](https://github.com/eigger/hass-repo-standards/blob/main/docs/bluetooth.md) for setup and recommended hardware, and [Bluetooth connection troubleshooting](https://github.com/eigger/hass-repo-standards/blob/main/docs/bluetooth.md#troubleshooting) for connection checks.
 
 ## Model-specific conditions
 
 - The scale only advertises while it is awake, and the advertisement carries **no weight**; weight is streamed over a GATT connection. Seeing the scale in Bluetooth discovery does not prove that connecting works.
 - These scales allow **one connection at a time**. Close the phone app, or turn the **Automatic measurement** switch off, to let another client connect.
-- Use a Bluetooth proxy configured as in the [shared guide](https://github.com/eigger/hass-repo-standards/blob/78d242092eac732a1af48770e77e3f51e566c6c2/docs/bluetooth.md) (`esp32_ble_tracker.scan_parameters.active: true` and `bluetooth_proxy.active: true`). Active scanning (scan responses) and GATT connection/write are separate steps: discovery working does not prove connecting works.
+- For proxy GATT connections, enable `bluetooth_proxy.active: true` as described in [Bluetooth proxy setup](https://github.com/eigger/hass-repo-standards/blob/main/docs/bluetooth.md). The separate `esp32_ble_tracker.scan_parameters.active` setting requests scan responses; this integration listens for advertisements in passive mode. Discovery working does not prove a GATT connection or write will succeed.
 - Tare and Power off are only supported by the 8-byte kitchen-scale firmware variant; coffee-scale firmware ignores them.
 - Verified path: only what is covered by the automated tests (mocked BLE transport). No physical-device matrix (model, firmware, adapter/proxy) is claimed.
 

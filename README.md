@@ -65,7 +65,7 @@ Turn the scale on, wait for the weight sensor to become available, then place an
     active: true
   ```
 
-  Recommended hardware and setup: [shared Bluetooth guide](https://github.com/eigger/hass-repo-standards/blob/main/docs/bluetooth.md) (Korean) and the [community board thread](https://community.home-assistant.io/t/great-esp32-board-for-an-esphome-bluetooth-proxy/916767/31).
+  Recommended hardware and setup: [Bluetooth proxy setup](https://github.com/eigger/hass-repo-standards/blob/main/docs/bluetooth.md) and the [community board thread](https://community.home-assistant.io/t/great-esp32-board-for-an-esphome-bluetooth-proxy/916767/31).
 - The scale allows a single connection; the phone app and Home Assistant cannot use it at the same time.
 - Seeing the scale in discovery does not prove a GATT connection will succeed.
 

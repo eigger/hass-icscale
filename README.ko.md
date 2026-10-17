@@ -65,7 +65,7 @@ ICOMON 블루투스(BLE) 주방·커피 저울에 직접 연결해 무게를 읽
     active: true
   ```
 
-  추천 기기와 설정은 [공통 Bluetooth 안내](https://github.com/eigger/hass-repo-standards/blob/main/docs/bluetooth.md)(한국어)와 [커뮤니티 보드 글](https://community.home-assistant.io/t/great-esp32-board-for-an-esphome-bluetooth-proxy/916767/31)을 참고하세요.
+  추천 기기와 설정은 [Bluetooth 프록시 설정](https://github.com/eigger/hass-repo-standards/blob/main/docs/bluetooth.ko.md)과 [커뮤니티 보드 글](https://community.home-assistant.io/t/great-esp32-board-for-an-esphome-bluetooth-proxy/916767/31)을 참고하세요.
 - 저울은 한 번에 하나의 연결만 허용하므로 스마트폰 앱과 Home Assistant를 동시에 사용할 수 없습니다.
 - 검색에 저울이 보여도 GATT 연결 성공을 의미하지 않습니다.
 

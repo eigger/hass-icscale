@@ -3,6 +3,7 @@
   "name": "ICOMON Kitchen Scale",
   "bluetooth": [
     {
+      "local_name": "MY_SCALE*",
       "service_uuid": "0000ffb0-0000-1000-8000-00805f9b34fb",
       "connectable": true
     }

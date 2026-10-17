@@ -29,11 +29,17 @@ from .const import (
 from .icscale_ble import SCALE_SERVICE
 
 
+# The vendor service UUID is shared with unrelated devices (e.g. grip
+# dynamometers), so the advertised name must match as well.
+# Keep in sync with the ``local_name`` matchers in manifest.json.
+SCALE_NAME_PREFIXES = ("MY_SCALE",)
+
+
 def _is_scale(service_info: BluetoothServiceInfoBleak) -> bool:
-    """A device is a supported scale if it advertises the vendor service."""
+    """A device is a supported scale if it has the vendor service and name."""
     return SCALE_SERVICE.lower() in (
         uuid.lower() for uuid in service_info.service_uuids
-    )
+    ) and (service_info.name or "").startswith(SCALE_NAME_PREFIXES)
 
 
 class IcScaleConfigFlow(ConfigFlow, domain=DOMAIN):

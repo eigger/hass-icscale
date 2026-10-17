@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from blesession import ConnectFailed, SessionTrace
-from conftest import ADDRESS, setup_entry
+from .conftest import ADDRESS, setup_entry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, State
 from homeassistant.helpers import entity_registry as er

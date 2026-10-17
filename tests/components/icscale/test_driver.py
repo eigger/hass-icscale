@@ -25,7 +25,9 @@ KITCHEN_FRAME = bytes([0xAC, 0xCA, 0x00, 0x00, 0x03, 0xE8, 0x00, 0xEB])
 
 
 def _patch(monkeypatch, client: FakeClient | None = None, fail=None) -> None:
-    monkeypatch.setattr(session_mod, "establish_connection", fake_connect(client, fail=fail))
+    monkeypatch.setattr(
+        session_mod, "establish_connection", fake_connect(client, fail=fail)
+    )
 
 
 async def test_connect_keeps_the_link_and_streams(monkeypatch) -> None:
@@ -104,7 +106,9 @@ async def test_failed_subscribe_reports_the_link_gone(monkeypatch) -> None:
     _patch(monkeypatch, fake)
     dropped = []
     with pytest.raises(BleakError):
-        await IcScaleClient("Scale").connect(FakeDevice(), lambda: dropped.append(True), None)
+        await IcScaleClient("Scale").connect(
+            FakeDevice(), lambda: dropped.append(True), None
+        )
     assert dropped == [True]
 
 
@@ -170,7 +174,13 @@ async def test_late_callback_from_an_old_link_is_ignored(monkeypatch) -> None:
 
 
 def _kitchen_frame(pkg: int, magnitude: int, unit: int = 0) -> bytes:
-    body = [0x00, (magnitude >> 16) & 0xFF, (magnitude >> 8) & 0xFF, magnitude & 0xFF, unit]
+    body = [
+        0x00,
+        (magnitude >> 16) & 0xFF,
+        (magnitude >> 8) & 0xFF,
+        magnitude & 0xFF,
+        unit,
+    ]
     return bytes([0xAC, pkg, *body, sum(body) & 0xFF])
 
 

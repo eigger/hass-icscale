@@ -7,7 +7,7 @@ import time
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
-from conftest import ADDRESS, setup_entry
+from .conftest import ADDRESS, setup_entry
 from homeassistant.core import HomeAssistant, State
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
@@ -102,7 +102,9 @@ async def test_power_off_ending_the_link_is_not_an_error(
     coordinator = entry.runtime_data
     coordinator._client = SimpleNamespace(
         state=coordinator.state,
-        is_connected=True, power_off=AsyncMock(), disconnect=AsyncMock()
+        is_connected=True,
+        power_off=AsyncMock(),
+        disconnect=AsyncMock(),
     )
 
     await coordinator.async_power_off()

@@ -1,57 +1,37 @@
+# Shared standards: eigger/hass-repo-standards@78d242092eac
 name: Tests
-
-on:
+'on':
   push:
-    branches: [main, master]
-  pull_request:
-  workflow_dispatch:
-
+    branches:
+    - main
+  pull_request: null
+  workflow_dispatch: null
 permissions:
   contents: read
-
 concurrency:
-  group: tests-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.13"
-
-      - name: Install ruff
-        run: pip install ruff
-
-      - name: Lint
-        run: python -m ruff check custom_components/ tests/
-
-  test:
-    # Tests run against a real Home Assistant (pytest-homeassistant-custom-component),
-    # which requires the Python version current Home Assistant needs.
-    runs-on: ubuntu-latest
-    needs: lint
-
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.14"
-
-      - name: Install dependencies
-        run: |
-          pip install --upgrade pip
-          pip install -r requirements_test.txt
-          python -c "import json; print('\n'.join(json.load(open('custom_components/icscale/manifest.json')).get('requirements', [])))" > "$RUNNER_TEMP/requirements.txt"
-          pip install -r "$RUNNER_TEMP/requirements.txt"
-          python scripts/ha_component_requirements.py bluetooth bluetooth_adapters recorder > "$RUNNER_TEMP/requirements_ha.txt"
-          pip install -r "$RUNNER_TEMP/requirements_ha.txt"
-
-      - name: Run tests
-        run: python -m pytest tests/ -v --timeout 120
+  current:
+    uses: eigger/hass-repo-standards/.github/workflows/python-tests.yml@78d242092eac732a1af48770e77e3f51e566c6c2
+    with:
+      domain: icscale
+      python-versions: '["3.14"]'
+      requirements: requirements_test.txt
+      dependency-modes: '["current", "minimum"]'
+      minimum-packages: '["blesession"]'
+      ha-components: bluetooth bluetooth_adapters recorder
+      expected-ha-version: '2026.10.2'
+      test-profile: ha
+      pytest-args: tests/components/icscale/ -v
+  minimum-ha:
+    # hacs.json declares homeassistant 2025.2.0; keep this exact-minimum job.
+    uses: eigger/hass-repo-standards/.github/workflows/python-tests.yml@78d242092eac732a1af48770e77e3f51e566c6c2
+    with:
+      domain: icscale
+      python-versions: '["3.13"]'
+      requirements: requirements_test_min.txt
+      ha-components: bluetooth bluetooth_adapters recorder
+      expected-ha-version: '2025.2.0'
+      test-profile: ha
+      pytest-args: tests/components/icscale/ -v

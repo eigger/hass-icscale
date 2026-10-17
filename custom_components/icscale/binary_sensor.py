@@ -71,5 +71,7 @@ class IcScaleStableSensor(IcScaleEntity, RestoreEntity, BinarySensorEntity):
     async def async_added_to_hass(self) -> None:
         """Handle entity about to be added to hass."""
         await super().async_added_to_hass()
-        if (last_state := await self.async_get_last_state()) is not None and last_state.state not in (None, "unknown", "unavailable"):
+        if (
+            last_state := await self.async_get_last_state()
+        ) is not None and last_state.state not in (None, "unknown", "unavailable"):
             self._attr_is_on = last_state.state == "on"

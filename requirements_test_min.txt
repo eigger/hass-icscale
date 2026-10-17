@@ -1,0 +1,4 @@
+# Exact minimum supported HA (hacs.json "homeassistant"), Python 3.13.
+# pytest-homeassistant-custom-component 0.13.210 pins homeassistant==2025.2.0.
+homeassistant==2025.2.0
+pytest-homeassistant-custom-component==0.13.210

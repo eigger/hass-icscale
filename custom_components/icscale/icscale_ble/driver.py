@@ -197,7 +197,6 @@ class IcScaleClient:
         if info.model and "coffee" in info.model.lower():
             self._state.is_coffee = True
 
-
     def _handle_notification(self, _sender: int, data: bytearray) -> None:
         raw = bytes(data)
         if len(raw) >= KITCHEN_FRAME_LEN and not checksum_ok(raw):

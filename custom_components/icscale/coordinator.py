@@ -47,11 +47,11 @@ from .session_report import (
 )
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from bleak.backends.device import BLEDevice
 
     from .types import IcScaleConfigEntry
-
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -107,8 +107,6 @@ class IcScaleCoordinator:
         self.address = address.upper()
         self.name = name
         self.idle_timeout = idle_timeout
-
-
 
         # User-facing "Connection" switch; when False we never hold the link.
         self.enabled = True
@@ -188,7 +186,6 @@ class IcScaleCoordinator:
         if self.enabled:
             self.hass.async_create_task(self._async_connect())
 
-
     async def async_stop(self) -> None:
         """Stop tracking and disconnect."""
         _LOGGER.info("%s: Stopping Bluetooth tracking", self.name)
@@ -203,7 +200,6 @@ class IcScaleCoordinator:
             unsub()
         self._unsub_link_checks.clear()
         await self._client.disconnect()
-
 
     # --- entity plumbing --------------------------------------------------
 
@@ -222,14 +218,14 @@ class IcScaleCoordinator:
         """Entities are always available to display their last known state."""
         return True
 
-
     @property
     def model(self) -> str:
         """Best-known device model string."""
-        if self.state.is_coffee or (self.state.info.model and "coffee" in self.state.info.model.lower()):
+        if self.state.is_coffee or (
+            self.state.info.model and "coffee" in self.state.info.model.lower()
+        ):
             return "Coffee Scale"
         return self.state.info.model or DEFAULT_MODEL
-
 
     async def async_set_enabled(self, enabled: bool) -> None:
         """Enable/disable HA holding the connection (the 'Connection' switch)."""
@@ -284,7 +280,6 @@ class IcScaleCoordinator:
                 self._last_weight_value = current
         self.hass.loop.call_soon_threadsafe(self._async_notify_listeners)
 
-
     @callback
     def _async_on_advertisement(
         self,
@@ -326,7 +321,6 @@ class IcScaleCoordinator:
             self._closing,
             self._lock.locked(),
         )
-
 
         # Note: we intentionally do not gate on service_info.connectable here.
         # A non-connectable sighting still proves the scale is awake and must
@@ -400,13 +394,17 @@ class IcScaleCoordinator:
             self.hass, self.address, connectable=True
         )
         if self._closing or service_info is None or service_info.time <= dropped_at:
-            _LOGGER.debug("%s: link ended with the scale asleep; not an error", self.name)
+            _LOGGER.debug(
+                "%s: link ended with the scale asleep; not an error", self.name
+            )
             return
         if (
             self._command_failed_at is not None
             and abs(dropped_at - self._command_failed_at) <= COMMAND_DROP_WINDOW
         ):
-            _LOGGER.debug("%s: link ended under a failed command; already recorded", self.name)
+            _LOGGER.debug(
+                "%s: link ended under a failed command; already recorded", self.name
+            )
             return
         trace = SessionTrace()
         if connected_for is not None:
@@ -522,7 +520,9 @@ class IcScaleCoordinator:
             if device is None:
                 _LOGGER.debug("%s not in range; deferring connect", self.name)
                 return
-            _LOGGER.info("%s: Initiating connection attempt to %s", self.name, self.address)
+            _LOGGER.info(
+                "%s: Initiating connection attempt to %s", self.name, self.address
+            )
             trace = SessionTrace()
             try:
                 await self._client.connect(device, self._on_disconnected, trace)
@@ -717,4 +717,3 @@ class IcScaleCoordinator:
         except Exception:
             self._coffee_type_saving = False
             raise
-

@@ -81,7 +81,6 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-
 class IcScaleSensor(IcScaleEntity, RestoreEntity, SensorEntity):
     """A scale-state-backed sensor."""
 
@@ -105,7 +104,9 @@ class IcScaleSensor(IcScaleEntity, RestoreEntity, SensorEntity):
     async def async_added_to_hass(self) -> None:
         """Handle entity about to be added to hass."""
         await super().async_added_to_hass()
-        if (last_state := await self.async_get_last_state()) is not None and last_state.state not in (None, "unknown", "unavailable"):
+        if (
+            last_state := await self.async_get_last_state()
+        ) is not None and last_state.state not in (None, "unknown", "unavailable"):
             if self.entity_description.key == "weight":
                 try:
                     self._attr_native_value = float(last_state.state)
@@ -113,11 +114,11 @@ class IcScaleSensor(IcScaleEntity, RestoreEntity, SensorEntity):
                     pass
             elif self.entity_description.key == "unit":
                 from .icscale_ble import UNIT_LABELS
+
                 for unit_enum, label in UNIT_LABELS.items():
                     if label == last_state.state:
                         self.coordinator.state.unit = unit_enum
                         break
-
 
     @property
     def available(self) -> bool:
@@ -125,7 +126,6 @@ class IcScaleSensor(IcScaleEntity, RestoreEntity, SensorEntity):
         if self.entity_description.key == "unit" and self.coordinator.state.is_coffee:
             return False
         return super().available
-
 
 
 class IcScaleStableWeightSensor(IcScaleEntity, RestoreEntity, SensorEntity):
@@ -222,9 +222,7 @@ class _IcScaleReportsEntity(IcScaleEntity, RestoreEntity, SensorEntity):
     async def async_added_to_hass(self) -> None:
         """Subscribe to new reports and restore what the last run recorded."""
         await super().async_added_to_hass()
-        self.async_on_remove(
-            self.coordinator.reports.add_listener(self._handle_report)
-        )
+        self.async_on_remove(self.coordinator.reports.add_listener(self._handle_report))
         if (last_state := await self.async_get_last_state()) is not None:
             self._restore(last_state.state, dict(last_state.attributes))
 

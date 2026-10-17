@@ -48,9 +48,7 @@ def checksum_ok(data: bytes) -> bool:
 
 def is_unit_frame(data: bytes) -> bool:
     """Return True for a kitchen-scale unit-change frame (package type 0xCC)."""
-    return (
-        KITCHEN_FRAME_LEN <= len(data) <= COFFEE_MIN_LEN and data[1] == PKG_UNIT
-    )
+    return KITCHEN_FRAME_LEN <= len(data) <= COFFEE_MIN_LEN and data[1] == PKG_UNIT
 
 
 def _as_unit(code: int) -> KitchenScaleUnit | None:
@@ -65,9 +63,7 @@ def _parse_coffee(data: bytes) -> WeightSample:
     status = data[2]
     negative = (status >> 4) in (0x8, 0xC)
     stable = (status & 0x0F) == 0x01
-    magnitude = (
-        ((data[3] & 0x0F) << 24) | (data[4] << 16) | (data[5] << 8) | data[6]
-    )
+    magnitude = ((data[3] & 0x0F) << 24) | (data[4] << 16) | (data[5] << 8) | data[6]
     grams = magnitude / 1000.0
     if negative:
         grams = -grams

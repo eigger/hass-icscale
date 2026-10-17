@@ -13,7 +13,9 @@ from custom_components.icscale.sensor import SENSORS, IcScaleSensor
 
 def _coordinator(state: ScaleState):
     return SimpleNamespace(
-        state=state, address="AA:BB:CC:DD:EE:01", async_add_listener=lambda cb: lambda: None
+        state=state,
+        address="AA:BB:CC:DD:EE:01",
+        async_add_listener=lambda cb: lambda: None,
     )
 
 

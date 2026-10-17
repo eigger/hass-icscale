@@ -6,7 +6,13 @@ from custom_components.icscale.icscale_ble import checksum_ok, parse_notificatio
 
 
 def _kitchen(pkg: int, flag: int, magnitude: int, unit: int = 0) -> bytes:
-    body = [flag, (magnitude >> 16) & 0xFF, (magnitude >> 8) & 0xFF, magnitude & 0xFF, unit]
+    body = [
+        flag,
+        (magnitude >> 16) & 0xFF,
+        (magnitude >> 8) & 0xFF,
+        magnitude & 0xFF,
+        unit,
+    ]
     return bytes([0xAC, pkg, *body, sum(body) & 0xFF])
 
 

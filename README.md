@@ -1,15 +1,22 @@
-# ICOMON BLE Home Assistant Integration (hass-icscale)
+# ICOMON Kitchen Scale (hass-icscale)
 
-[![GitHub Release](https://img.shields.io/github/v/release/eigger/hass-icscale?style=flat-square)](https://github.com/eigger/hass-icscale/releases)
+<!-- hass-standards:badges:start -->
+[![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5?style=flat-square)](#installation)
+[![Release](https://img.shields.io/github/v/release/eigger/hass-icscale?style=flat-square)](https://github.com/eigger/hass-icscale/releases)
+[![Home Assistant minimum](https://img.shields.io/badge/HA-%E2%89%A5%202025.2.0-41BDF5?style=flat-square)](hacs.json)
+[![Tests](https://img.shields.io/github/actions/workflow/status/eigger/hass-icscale/tests.yml?branch=main&style=flat-square&label=Tests)](https://github.com/eigger/hass-icscale/actions/workflows/tests.yml)
+[![Validate](https://img.shields.io/github/actions/workflow/status/eigger/hass-icscale/validate.yml?branch=main&style=flat-square&label=Validate)](https://github.com/eigger/hass-icscale/actions/workflows/validate.yml)
 [![License](https://img.shields.io/github/license/eigger/hass-icscale?style=flat-square)](LICENSE)
-[![HACS](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
+[![Analytics reporting installs](https://img.shields.io/badge/dynamic/json?style=flat-square&color=41BDF5&label=Usage&query=%24.icscale.total&url=https%3A%2F%2Fanalytics.home-assistant.io%2Fcustom_integrations.json)](https://analytics.home-assistant.io/)
+<!-- hass-standards:badges:end -->
 
-A custom integration for Home Assistant to connect and read weight data directly from ICOMON Bluetooth Low Energy (BLE) kitchen / coffee scales.
+**English** | [한국어](README.ko.md)
 
-## 💬 Feedback & Support
+A HACS custom integration for Home Assistant that connects directly over Bluetooth Low Energy (BLE) to ICOMON kitchen / coffee scales and reads weight data. It is not part of Home Assistant Core.
 
-🐞 Found a bug? Let us know via an [Issue](https://github.com/eigger/hass-icscale/issues).  
-💡 Have a question or suggestion? Join the [Discussion](https://github.com/eigger/hass-icscale/discussions)!
+## Supported devices
+
+ICOMON BLE kitchen and coffee scales that advertise service `0000ffb0-…` (local name `MY_SCALE*`). Two firmware variants are handled; see [protocol notes](docs/protocol.md). Only the automated tests (mocked BLE transport) are claimed; physical models and firmware are not individually verified.
 
 ## Features
 
@@ -22,24 +29,32 @@ A custom integration for Home Assistant to connect and read weight data directly
 - **Idle auto-disconnect**: Releases the scale after a configurable idle period so it can power off; reconnects automatically when used again
 - **Measure now**: Button that forces an immediate connection and reading, for deterministic on-demand measurement regardless of the automatic connection state
 - **Tare and Power Off**: Interactive buttons to zero out the weight or turn off the scale
-- **Auto-discovery**: Instantly discovered via Home Assistant's Bluetooth integration
+- **Auto-discovery**: Instantly discovered via the Home Assistant Bluetooth integration
+
+## Requirements
+
+- Home Assistant 2025.2.0 or newer
+- A Bluetooth adapter or, strongly recommended, an ESPHome Bluetooth proxy (see [Important limitations](#important-limitations))
 
 ## Installation
 
-1. **HACS**: Add this repository (`eigger/hass-icscale`) to HACS as a custom repository, or 
-   **Manual**: Copy the `custom_components/icscale` directory into your Home Assistant `custom_components` folder.
+1. **HACS**: add `eigger/hass-icscale` as a custom repository (type *Integration*) and install it, or copy `custom_components/icscale` into your Home Assistant `custom_components` folder.
 2. Restart Home Assistant.
+3. Turn the scale on. It should be discovered automatically under **Settings** > **Devices & Services**; click **Configure**. Otherwise choose **Add Integration** and search for "ICOMON Kitchen Scale".
 
-## ⚠️ Important Notice
+To remove it, delete the integration entry in **Devices & Services**, then uninstall it from HACS (or delete the folder).
 
-- It is **strongly recommended to use a Bluetooth proxy instead of a built-in Bluetooth adapter**.  
-  Bluetooth proxies generally offer more stable connections and better range, especially in environments with multiple BLE devices.
+## Configuration
 
-> [!TIP]
-> For hardware recommendations, refer to [Great ESP32 Board for an ESPHome Bluetooth Proxy](https://community.home-assistant.io/t/great-esp32-board-for-an-esphome-bluetooth-proxy/916767/31).  
-- **bluetooth_proxy:** must always have **active: true**.
+Under **Configure** on the integration page you can set the **Idle disconnect timeout (minutes)**: how long without a weight change before Home Assistant releases the connection (default 3). More in [How it works](docs/how-it-works.md).
 
-  Example (recommended configuration with default values):
+## Quick start
+
+Turn the scale on, wait for the weight sensor to become available, then place an item on it. Press **Measure now** to force a connection if the scale is still advertising after an idle disconnect.
+
+## Important limitations
+
+- Use a **Bluetooth proxy rather than a built-in adapter** whenever possible, with `active: true`:
 
   ```yaml
   esp32_ble_tracker:
@@ -50,99 +65,21 @@ A custom integration for Home Assistant to connect and read weight data directly
     active: true
   ```
 
-## Setup & Pairing
+  Recommended hardware and setup: [shared Bluetooth guide](https://github.com/eigger/hass-repo-standards/blob/main/docs/bluetooth.md) (Korean) and the [community board thread](https://community.home-assistant.io/t/great-esp32-board-for-an-esphome-bluetooth-proxy/916767/31).
+- The scale allows a single connection; the phone app and Home Assistant cannot use it at the same time.
+- Seeing the scale in discovery does not prove a GATT connection will succeed.
 
-Device setup is done entirely through the Home Assistant UI.
+## Documentation
 
-1. **Power on the Scale**: Tap the scale's power button to turn it on.
-2. **Add Integration**:
-   - In Home Assistant, go to **Settings** > **Devices & Services**.
-   - Home Assistant should automatically discover the "ICOMON Kitchen Scale" device via Bluetooth. Click **Configure**.
-   - If it wasn't auto-discovered, click **Add Integration** and search for "ICOMON Kitchen Scale".
-3. **Submit**: Click **Submit** in Home Assistant to finish setting up.
+- [How it works](docs/how-it-works.md)
+- [Protocol notes](docs/protocol.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [Development and testing](docs/development.md)
 
-## How It Works
+## Support
 
-The scale only advertises over Bluetooth while it is awake, and it does **not**
-put weight in the advertisement — weight is streamed over a connection. This
-integration follows the scale's natural lifecycle:
+Report bugs through [Issues](https://github.com/eigger/hass-icscale/issues); ask questions or suggest features in [Discussions](https://github.com/eigger/hass-icscale/discussions).
 
-- **Connect while awake**: As soon as the scale is seen advertising, Home
-  Assistant connects and streams weight changes in real time.
-- **Idle auto-disconnect**: If the weight does not change for the configured idle
-  timeout (default 3 minutes), HA disconnects so the scale can power itself off
-  and so the phone app can use Bluetooth (these scales allow only one connection
-  at a time).
-- **Automatic reconnect**: After an idle disconnect, HA reconnects when the scale
-  genuinely wakes again (it stopped advertising and reappeared). A scale that
-  keeps advertising is re-checked periodically as a fallback.
-- **Automatic measurement switch**: Turn the **Automatic measurement** switch off
-  to stop HA from auto-connecting entirely, freeing the scale for the phone app;
-  turn it back on to resume automatic streaming. (The **Measure now** button still
-  works while it is off.)
-- **On-demand measurement**: Since the advertisement carries no weight, putting
-  something on an already-connected scale streams instantly — but if HA has
-  idle-disconnected and the scale never stopped advertising, press **Measure now**
-  to force an immediate connection and reading. Turning the scale off and on (so
-  it re-advertises) also triggers an automatic reconnect.
-- **Interactive Commands**: The **Measure now**, **Tare**, and **Power off**
-  buttons connect on demand to perform the action even if HA is currently
-  disconnected.
+## License
 
-## Configuration Options
-
-You can adjust this under **Configure** on the integration page:
-- **Idle disconnect timeout (minutes)**: How long with no weight change before HA
-  releases the connection (default 3).
-
-## Protocol Notes
-
-GATT profile:
-
-| Role | UUID |
-| --- | --- |
-| Service | `0000ffb0-0000-1000-8000-00805f9b34fb` |
-| Notify (scale → app) | `0000ffb2-0000-1000-8000-00805f9b34fb` |
-| Write (app → scale) | `0000ffb1-0000-1000-8000-00805f9b34fb` |
-
-Two notification frame variants are supported and auto-detected by length.
-
-**Coffee-scale variant** (long frame, > 14 bytes):
-
-```
-[2] status     high nibble -> sign, low nibble == 1 -> stable
-[3..6] weight  magnitude = (b3 & 0x0F)<<24 | b4<<16 | b5<<8 | b6
-```
-
-`weight_grams = magnitude / 1000`, negated when the sign nibble is set.
-
-**Kitchen-scale variant** (8-byte frame):
-
-```
-[1] package type (0xCA stable / 0xCE live / 0xCC unit)
-[2] flag         bit0 = sign (1=negative), bits1-3 = precision (0-7)
-[3..5] weight    24-bit big-endian magnitude
-[6] unit         [7] checksum = (b2+b3+b4+b5+b6) & 0xFF
-```
-
-`weight_grams = magnitude / 10**precision`, negated when the sign bit is set.
-
-Command frames written to `0xFFB1` (write-without-response, device type `0x04`),
-used by the kitchen-scale variant (coffee-scale firmware ignores them):
-
-- Tare: `AC 04 FE 14 01 00 CC`
-- Power off: `AC 04 FE 00 00 00 B0`
-
-## Troubleshooting
-
-- **Sensor values not updating**: HA connects when the scale is awake and advertising. Make sure the scale is powered on, and confirm the **Automatic measurement** switch is on (or press **Measure now**). Place something on the scale to generate a weight change.
-- **Tare / Power off command failed**: The scale must be turned on and in Bluetooth range. If the command fails, ensure the scale is awake.
-- **Debug Logging**: If you face issues, enable debug logs:
-
-```yaml
-logger:
-  logs:
-    custom_components.icscale: debug
-```
-
-
+See [LICENSE](LICENSE).

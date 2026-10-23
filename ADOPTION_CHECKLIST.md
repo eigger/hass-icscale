@@ -63,3 +63,10 @@
 | HA-01 ~ HA-13 | 통합 코드 구조·생명주기 점검 |
 | CI-04, CI-07, CI-12 | required checks 이름(Tests / Validate) 저장소 설정 확인 |
 | CI-09, CI-10 | update_dependencies 첫 실행 결과 확인 (Actions의 PR 생성 허용 설정 포함) |
+
+
+## 2026-10-23 HACS ZIP and Downloads (scoped)
+
+- Target base: `b675dd2b976666253d3aa4b5554a9496e3727cab`; reviewed release central: `fd4162c0b93fbe8e109f99c787773ae09ba157e1`.
+- Scope: HACS-04/CI-11 release ZIP and DOC-03/05 Downloads replacing Analytics Usage. No release is created during this update.
+- Validation: pending badge/release contract checks, actionlint, actual local ZIP build and remote PR CI. Full adoption, device and real release upload are not asserted by this partial change.

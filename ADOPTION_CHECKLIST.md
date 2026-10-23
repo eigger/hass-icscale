@@ -63,3 +63,40 @@
 | HA-01 ~ HA-13 | 통합 코드 구조·생명주기 점검 |
 | CI-04, CI-07, CI-12 | required checks 이름(Tests / Validate) 저장소 설정 확인 |
 | CI-09, CI-10 | update_dependencies 첫 실행 결과 확인 (Actions의 PR 생성 허용 설정 포함) |
+
+
+## 2026-10-23 HACS ZIP and Downloads (scoped)
+
+- Target base: `b675dd2b976666253d3aa4b5554a9496e3727cab`; reviewed release central: `fd4162c0b93fbe8e109f99c787773ae09ba157e1`.
+- Scope: HACS-04/CI-11 release ZIP and DOC-03/05 Downloads replacing Analytics Usage. No release is created during this update.
+- Local scoped validation: PASS — canonical badge check, no Analytics Usage, release metadata/caller contract, actionlint 1.7.12, native git diff --check, unchanged tracked integration/manifest/dependencies/tests.
+- Actual archive build: PASS at `1c1b695d2d4b89a81035afdd35c0563458d1d4fa`; `icscale.zip`, 25 files, SHA256 `06226aad1689fb89acf5367fde833dde7c43665eca373838d65be0b1fdde5994`. All archive members matched checkout bytes; manifest.json and __init__.py are at ZIP root. Final documentation-only follow-up preserves this integration tree. Windows Python 3.14.6; validation WSL Python 3.14.4/PyYAML 6.0.3/packaging 26.0.
+- Full central integration checker: FAIL (pre-existing or unadopted contracts outside this scoped update; not treated as PASS). Findings:
+
+```text
+DOC-01 README.md: Exactly one ordered header marker pair required
+DOC-01 README.ko.md: Exactly one ordered header marker pair required
+HA-02 custom_components/icscale/manifest.json: categories requires 1–3 actual product categories (HA-02 project policy)
+TEST-08 tests/components/icscale/test_init.py: Required contract file is missing
+TEST-08 tests/components/icscale/test_config_flow.py: Required contract file is missing
+TEST-08 tests/components/icscale/test_binary_sensor.py: Required contract file is missing
+TEST-08 tests/components/icscale/test_button.py: Required contract file is missing
+TEST-08 tests/components/icscale/test_sensor.py: Required contract file is missing
+TEST-08 tests/components/icscale/test_switch.py: Required contract file is missing
+TEST-08 tests/components/icscale/test_coordinator.py: Required contract file is missing
+HA-13 custom_components/__init__.py: Required contract file is missing
+GOV-02 .github/workflows/tests.yml: standards-ref must equal the reviewed reusable workflow SHA
+GOV-02 .github/workflows/tests.yml: standards-ref must equal the reviewed reusable workflow SHA
+GOV-02 .github/workflows/update_dependencies.yml: standards-ref must equal the reviewed reusable workflow SHA
+TEST-03 tests/conftest.py: must match the central template exactly
+TEST-08 tests/components/icscale/conftest.py: Exactly one ordered domain-fixtures marker pair required
+TEST-08 tests/components/icscale/test_init.py: real HA lifecycle tests are required
+CI-01 .github/workflows/validate.yml: central standards composite action pinned to full SHA required
+DOC-07 docs/troubleshooting.md: Use the central troubleshooting H2 headings in their fixed order
+DOC-07 README.md: README must link to matching-language local troubleshooting and blesession proxy setup
+DOC-07 docs/troubleshooting.ko.md: [Errno 2] No such file or directory: '/mnt/d/Source/Github/.hacs-custom-zip/hass-icscale/docs/troubleshooting.ko.md'
+DOC-07 README.ko.md: README must link to matching-language local troubleshooting and blesession proxy setup
+```
+
+- Existing CI workflows are preserved, except hass-kocom-smarthome where matching reviewed central references are synchronized. Existing support minimum and prior exceptions remain.
+- Independent review and remote CI: tracked in this branch's pull request; merge requires resolved actionable findings and successful applicable checks. No real release upload, device or new real HA runtime validation is claimed by these local packaging checks.

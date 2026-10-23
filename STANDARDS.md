@@ -1,7 +1,7 @@
 # 적용한 공통 규칙
 
 - 표준: https://github.com/eigger/hass-repo-standards/tree/main
-- 참조 커밋 SHA: 78d242092eac732a1af48770e77e3f51e566c6c2
+- 참조 커밋 SHA: `78d242092eac732a1af48770e77e3f51e566c6c2`
 - 채택일: 2026-10-17 (PR #17, 4350ddf)
 - profile: integration / ha (실제 HA fixture·통합 로딩 필수)
 - 적용 점검표: [ADOPTION_CHECKLIST.md](ADOPTION_CHECKLIST.md)
@@ -21,3 +21,14 @@
 | 규칙 ID | 이유 | 담당자 | 재검토 조건 |
 |---|---|---|---|
 | GOV-05 | 구현을 서브 에이전트에 위임하지 않고 주 에이전트가 수행(리뷰만 독립 서브 에이전트) | @eigger | 다음 채택에서 구현도 위임 |
+
+- Reviewed release standards SHA: `fd4162c0b93fbe8e109f99c787773ae09ba157e1`
+
+
+## 2026-10-23 ZIP release and Downloads update
+
+Base commit: `b675dd2b976666253d3aa4b5554a9496e3727cab`. HACS remains Custom. `hacs.json` now selects `icscale.zip`; publishing the next release builds and attaches that integration ZIP through the pinned central action. Analytics Usage is replaced by Downloads. The archive contains tracked integration files at its root. No existing release/tag/assets are modified.
+
+Implementation and review: root; generated release caller reuses the independently reviewed central ZIP contract. Support minimum, manifest, code, dependencies, README body and prior adoption exceptions are preserved. Verification evidence is recorded in ADOPTION_CHECKLIST.md; this scoped update does not establish full standards compliance.
+
+AGENTS.md is removed at the user's explicit request; its delegation instruction is superseded.

@@ -1,13 +1,13 @@
 # ICOMON Kitchen Scale (hass-icscale)
 
 <!-- hass-standards:badges:start -->
-[![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5?style=flat-square)](#installation)
-[![Release](https://img.shields.io/github/v/release/eigger/hass-icscale?style=flat-square)](https://github.com/eigger/hass-icscale/releases)
-[![Home Assistant minimum](https://img.shields.io/badge/HA-%E2%89%A5%202025.2.0-41BDF5?style=flat-square)](hacs.json)
-[![Tests](https://img.shields.io/github/actions/workflow/status/eigger/hass-icscale/tests.yml?branch=main&style=flat-square&label=Tests)](https://github.com/eigger/hass-icscale/actions/workflows/tests.yml)
-[![Validate](https://img.shields.io/github/actions/workflow/status/eigger/hass-icscale/validate.yml?branch=main&style=flat-square&label=Validate)](https://github.com/eigger/hass-icscale/actions/workflows/validate.yml)
-[![License](https://img.shields.io/github/license/eigger/hass-icscale?style=flat-square)](LICENSE)
-[![Analytics reporting installs](https://img.shields.io/badge/dynamic/json?style=flat-square&color=41BDF5&label=Usage&query=%24.icscale.total&url=https%3A%2F%2Fanalytics.home-assistant.io%2Fcustom_integrations.json)](https://analytics.home-assistant.io/)
+[![Release](https://img.shields.io/github/v/release/eigger/hass-icscale?style=flat)](https://github.com/eigger/hass-icscale/releases)
+[![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5?style=flat)](#installation)
+[![Home Assistant minimum](https://img.shields.io/badge/HA-%E2%89%A5%202025.2.0-41BDF5?style=flat)](hacs.json)
+[![Tests](https://img.shields.io/github/actions/workflow/status/eigger/hass-icscale/tests.yml?branch=main&style=flat&label=Tests)](https://github.com/eigger/hass-icscale/actions/workflows/tests.yml)
+[![Validate](https://img.shields.io/github/actions/workflow/status/eigger/hass-icscale/validate.yml?branch=main&style=flat&label=Validate)](https://github.com/eigger/hass-icscale/actions/workflows/validate.yml)
+[![License](https://img.shields.io/github/license/eigger/hass-icscale?style=flat)](LICENSE)
+[![Downloads](https://img.shields.io/github/downloads/eigger/hass-icscale/total?style=flat&color=41BDF5&label=Downloads)](https://github.com/eigger/hass-icscale/releases)
 <!-- hass-standards:badges:end -->
 
 **English** | [한국어](README.ko.md)

@@ -11,8 +11,9 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    uses: eigger/hass-repo-standards/.github/workflows/dependency-update.yml@78d242092eac732a1af48770e77e3f51e566c6c2
+    uses: eigger/hass-repo-standards/.github/workflows/dependency-update.yml@ca740d88b32fa5dcbc94c41fce2908450c76ed50
     with:
+      standards-ref: ca740d88b32fa5dcbc94c41fce2908450c76ed50
       domain: icscale
       packages: '["blesession"]'
       ha-components: bluetooth bluetooth_adapters recorder

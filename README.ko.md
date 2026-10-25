@@ -1,4 +1,9 @@
-# ICOMON 주방 저울 (hass-icscale)
+<!-- hass-standards:header:start -->
+# ICOMON Kitchen Scale (hass-icscale)
+
+ICOMON 블루투스(BLE) 주방·커피 저울에 직접 연결해 무게를 읽는 Home Assistant용 HACS 커스텀 통합입니다. Home Assistant Core에 포함된 통합이 아닙니다.
+
+[English](README.md) | **한국어**
 
 <!-- hass-standards:badges:start -->
 [![Release](https://img.shields.io/github/v/release/eigger/hass-icscale?style=flat)](https://github.com/eigger/hass-icscale/releases)
@@ -9,10 +14,7 @@
 [![License](https://img.shields.io/github/license/eigger/hass-icscale?style=flat)](LICENSE)
 [![Downloads](https://img.shields.io/github/downloads/eigger/hass-icscale/total?style=flat&color=41BDF5&label=Downloads)](https://github.com/eigger/hass-icscale/releases)
 <!-- hass-standards:badges:end -->
-
-[English](README.md) | **한국어**
-
-ICOMON 블루투스(BLE) 주방·커피 저울에 직접 연결해 무게를 읽는 Home Assistant용 HACS 커스텀 통합입니다. Home Assistant Core에 포함된 통합이 아닙니다.
+<!-- hass-standards:header:end -->
 
 ## 지원 기기
 
@@ -37,6 +39,10 @@ ICOMON 블루투스(BLE) 주방·커피 저울에 직접 연결해 무게를 읽
 - 블루투스 어댑터 또는 (강력 권장) ESPHome 블루투스 프록시([중요 제한사항](#중요-제한사항) 참고)
 
 ## 설치
+
+<!-- hass-standards:installation:start -->
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=eigger&repository=hass-icscale&category=integration)
+<!-- hass-standards:installation:end -->
 
 1. **HACS**: `eigger/hass-icscale`을 커스텀 리포지토리(*Integration*)로 추가해 설치하거나, `custom_components/icscale` 폴더를 Home Assistant의 `custom_components`에 복사합니다.
 2. Home Assistant를 재시작합니다.
@@ -65,21 +71,32 @@ ICOMON 블루투스(BLE) 주방·커피 저울에 직접 연결해 무게를 읽
     active: true
   ```
 
-  추천 기기와 설정은 [Bluetooth 프록시 설정](https://github.com/eigger/hass-repo-standards/blob/main/docs/bluetooth.ko.md)과 [커뮤니티 보드 글](https://community.home-assistant.io/t/great-esp32-board-for-an-esphome-bluetooth-proxy/916767/31)을 참고하세요.
+  추천 기기와 설정은 [Bluetooth 프록시 설정](https://github.com/eigger/blesession/blob/main/docs/bluetooth.ko.md)과 [커뮤니티 보드 글](https://community.home-assistant.io/t/great-esp32-board-for-an-esphome-bluetooth-proxy/916767/31)을 참고하세요.
 - 저울은 한 번에 하나의 연결만 허용하므로 스마트폰 앱과 Home Assistant를 동시에 사용할 수 없습니다.
 - 검색에 저울이 보여도 GATT 연결 성공을 의미하지 않습니다.
 
 ## 문서
+
+- [기기별 문제 해결](docs/troubleshooting.ko.md)
+- [Bluetooth 프록시 설정](https://github.com/eigger/blesession/blob/main/docs/bluetooth.ko.md)
 
 - [동작 방식](docs/how-it-works.md) (영어)
 - [프로토콜 노트](docs/protocol.md) (영어)
 - [문제 해결](docs/troubleshooting.md) (영어)
 - [개발 및 테스트](docs/development.md) (영어)
 
+<!-- hass-standards:support:start -->
 ## 지원
 
-버그는 [Issues](https://github.com/eigger/hass-icscale/issues), 질문·기능 제안은 [Discussions](https://github.com/eigger/hass-icscale/discussions)를 이용하세요.
+- [Issues](https://github.com/eigger/hass-icscale/issues): 버그를 신고하거나 기능을 요청하세요.
+- [Discussions](https://github.com/eigger/hass-icscale/discussions): 질문하고 사용 경험을 공유하세요.
+<!-- hass-standards:support:end -->
 
+<!-- hass-standards:related-projects:start -->
+<!-- hass-standards:related-projects:end -->
+
+<!-- hass-standards:license:start -->
 ## 라이선스
 
-[LICENSE](LICENSE)를 참고하세요.
+[MIT License](LICENSE) 라이선스로 배포됩니다.
+<!-- hass-standards:license:end -->

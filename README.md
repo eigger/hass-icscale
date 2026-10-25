@@ -1,4 +1,9 @@
+<!-- hass-standards:header:start -->
 # ICOMON Kitchen Scale (hass-icscale)
+
+A HACS custom integration for Home Assistant that connects directly over Bluetooth Low Energy (BLE) to ICOMON kitchen / coffee scales and reads weight data. It is not part of Home Assistant Core.
+
+**English** | [한국어](README.ko.md)
 
 <!-- hass-standards:badges:start -->
 [![Release](https://img.shields.io/github/v/release/eigger/hass-icscale?style=flat)](https://github.com/eigger/hass-icscale/releases)
@@ -9,10 +14,7 @@
 [![License](https://img.shields.io/github/license/eigger/hass-icscale?style=flat)](LICENSE)
 [![Downloads](https://img.shields.io/github/downloads/eigger/hass-icscale/total?style=flat&color=41BDF5&label=Downloads)](https://github.com/eigger/hass-icscale/releases)
 <!-- hass-standards:badges:end -->
-
-**English** | [한국어](README.ko.md)
-
-A HACS custom integration for Home Assistant that connects directly over Bluetooth Low Energy (BLE) to ICOMON kitchen / coffee scales and reads weight data. It is not part of Home Assistant Core.
+<!-- hass-standards:header:end -->
 
 ## Supported devices
 
@@ -37,6 +39,10 @@ ICOMON BLE kitchen and coffee scales that advertise service `0000ffb0-…` (loca
 - A Bluetooth adapter or, strongly recommended, an ESPHome Bluetooth proxy (see [Important limitations](#important-limitations))
 
 ## Installation
+
+<!-- hass-standards:installation:start -->
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=eigger&repository=hass-icscale&category=integration)
+<!-- hass-standards:installation:end -->
 
 1. **HACS**: add `eigger/hass-icscale` as a custom repository (type *Integration*) and install it, or copy `custom_components/icscale` into your Home Assistant `custom_components` folder.
 2. Restart Home Assistant.
@@ -65,7 +71,7 @@ Turn the scale on, wait for the weight sensor to become available, then place an
     active: true
   ```
 
-  Recommended hardware and setup: [Bluetooth proxy setup](https://github.com/eigger/hass-repo-standards/blob/main/docs/bluetooth.md) and the [community board thread](https://community.home-assistant.io/t/great-esp32-board-for-an-esphome-bluetooth-proxy/916767/31).
+  Recommended hardware and setup: [Bluetooth proxy setup](https://github.com/eigger/blesession/blob/main/docs/bluetooth.md) and the [community board thread](https://community.home-assistant.io/t/great-esp32-board-for-an-esphome-bluetooth-proxy/916767/31).
 - The scale allows a single connection; the phone app and Home Assistant cannot use it at the same time.
 - Seeing the scale in discovery does not prove a GATT connection will succeed.
 
@@ -76,10 +82,18 @@ Turn the scale on, wait for the weight sensor to become available, then place an
 - [Troubleshooting](docs/troubleshooting.md)
 - [Development and testing](docs/development.md)
 
+<!-- hass-standards:support:start -->
 ## Support
 
-Report bugs through [Issues](https://github.com/eigger/hass-icscale/issues); ask questions or suggest features in [Discussions](https://github.com/eigger/hass-icscale/discussions).
+- [Issues](https://github.com/eigger/hass-icscale/issues): Report bugs or request features.
+- [Discussions](https://github.com/eigger/hass-icscale/discussions): Ask questions and share your experience.
+<!-- hass-standards:support:end -->
 
+<!-- hass-standards:related-projects:start -->
+<!-- hass-standards:related-projects:end -->
+
+<!-- hass-standards:license:start -->
 ## License
 
-See [LICENSE](LICENSE).
+Released under the [MIT License](LICENSE).
+<!-- hass-standards:license:end -->

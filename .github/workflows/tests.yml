@@ -21,7 +21,6 @@ jobs:
       dependency-modes: '["current", "minimum"]'
       minimum-packages: '["blesession"]'
       ha-components: bluetooth bluetooth_adapters recorder
-      expected-ha-version: '2026.10.2'
       test-profile: ha
       pytest-args: tests/components/icscale/ -v
   minimum-ha:

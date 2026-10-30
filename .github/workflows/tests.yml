@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   current:
-    uses: eigger/hass-repo-standards/.github/workflows/python-tests.yml@v1.1.4
+    uses: eigger/hass-repo-standards/.github/workflows/python-tests.yml@v1.1.5
     with:
       domain: icscale
       python-versions: '["3.14"]'
@@ -25,7 +25,7 @@ jobs:
       pytest-args: tests/components/icscale/ -v
   minimum-ha:
     # hacs.json declares homeassistant 2025.2.0; keep this exact-minimum job.
-    uses: eigger/hass-repo-standards/.github/workflows/python-tests.yml@v1.1.4
+    uses: eigger/hass-repo-standards/.github/workflows/python-tests.yml@v1.1.5
     with:
       domain: icscale
       python-versions: '["3.13"]'

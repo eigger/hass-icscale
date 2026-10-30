@@ -12,7 +12,7 @@ ICOMON 블루투스(BLE) 주방·커피 저울에 직접 연결해 무게를 읽
 [![Tests](https://img.shields.io/github/actions/workflow/status/eigger/hass-icscale/tests.yml?branch=main&style=flat&label=Tests)](https://github.com/eigger/hass-icscale/actions/workflows/tests.yml)
 [![Validate](https://img.shields.io/github/actions/workflow/status/eigger/hass-icscale/validate.yml?branch=main&style=flat&label=Validate)](https://github.com/eigger/hass-icscale/actions/workflows/validate.yml)
 [![License](https://img.shields.io/github/license/eigger/hass-icscale?style=flat)](LICENSE)
-[![Downloads](https://img.shields.io/github/downloads/eigger/hass-icscale/total?style=flat&color=41BDF5&label=Downloads)](https://github.com/eigger/hass-icscale/releases)
+[![Downloads](https://img.shields.io/github/downloads/eigger/hass-icscale/latest/total?style=flat&color=41BDF5&label=Downloads)](https://github.com/eigger/hass-icscale/releases)
 <!-- hass-standards:badges:end -->
 <!-- hass-standards:header:end -->
 

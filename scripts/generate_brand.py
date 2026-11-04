@@ -1,10 +1,10 @@
 """Generate Home Assistant brand images for ICScale.
 
 The artwork is an original geometric brand mark on a dark navy rounded square:
-a cyan and white digital kitchen scale with a golden weight readout icon and
-Bluetooth signal arcs. Drawn from geometric primitives at 4x scale and
-downsampled, so no source image, external font file, or network access is
-needed. Run with Pillow 12.3.0 for reproducible PNGs.
+a centered cyan and white digital kitchen scale with a golden calibration weight
+readout icon. Drawn from geometric primitives at 4x scale and downsampled, so no
+source image, external font file, or network access is needed. Run with
+Pillow 12.3.0 for reproducible PNGs.
 """
 
 from __future__ import annotations
@@ -80,37 +80,6 @@ def _rounded_polygon(
     return poly_pts
 
 
-def _draw_arc_ring(
-    d: ImageDraw.ImageDraw,
-    cx: float,
-    cy: float,
-    r_in: float,
-    r_out: float,
-    deg_start: float,
-    deg_end: float,
-    fill: str,
-) -> None:
-    """Draw a smooth annular sector."""
-    steps = 48
-    a0 = math.radians(deg_start)
-    a1 = math.radians(deg_end)
-    pts_out = [
-        (
-            cx + r_out * math.cos(a0 + (a1 - a0) * i / steps),
-            cy + r_out * math.sin(a0 + (a1 - a0) * i / steps),
-        )
-        for i in range(steps + 1)
-    ]
-    pts_in = [
-        (
-            cx + r_in * math.cos(a0 + (a1 - a0) * i / steps),
-            cy + r_in * math.sin(a0 + (a1 - a0) * i / steps),
-        )
-        for i in range(steps + 1)
-    ]
-    d.polygon(pts_out + list(reversed(pts_in)), fill=fill)
-
-
 def draw_icon() -> Image.Image:
     """Draw the 512px RGBA app icon."""
     s = SCALE
@@ -123,54 +92,44 @@ def draw_icon() -> Image.Image:
     # 1. Dark navy rounded square background.
     d.rounded_rectangle(box(0, 0, SIZE - 1, SIZE - 1), radius=104 * s, fill=NAVY)
 
-    # 2. Top weighing platform (white trapezoid) and support neck.
+    # 2. Centered top weighing platform (white trapezoid) and support rim.
     platform_pts = [
-        (132 * s, 118 * s),
-        (360 * s, 118 * s),
-        (388 * s, 226 * s),
-        (104 * s, 226 * s),
+        (136 * s, 96 * s),
+        (376 * s, 96 * s),
+        (404 * s, 212 * s),
+        (108 * s, 212 * s),
     ]
     d.polygon(_rounded_polygon(platform_pts, 28 * s), fill=WHITE)
-    # Subtle cyan rim along the bottom edge of the weighing tray.
-    d.rounded_rectangle(box(116, 206, 376, 226), radius=10 * s, fill=CYAN)
+    d.rounded_rectangle(box(120, 192, 392, 212), radius=10 * s, fill=CYAN)
 
-    # 3. Main scale body (cyan trapezoid) below a dark navy gap.
-    # Feet at the bottom.
-    d.rounded_rectangle(box(112, 404, 168, 434), radius=12 * s, fill=GOLD)
-    d.rounded_rectangle(box(324, 404, 380, 434), radius=12 * s, fill=GOLD)
+    # 3. Centered main scale body (cyan trapezoid) and bottom feet.
+    d.rounded_rectangle(box(118, 392, 176, 424), radius=12 * s, fill=GOLD)
+    d.rounded_rectangle(box(336, 392, 394, 424), radius=12 * s, fill=GOLD)
 
     body_pts = [
-        (114 * s, 248 * s),
-        (378 * s, 248 * s),
-        (414 * s, 412 * s),
-        (78 * s, 412 * s),
+        (118 * s, 234 * s),
+        (394 * s, 234 * s),
+        (430 * s, 400 * s),
+        (82 * s, 400 * s),
     ]
     d.polygon(_rounded_polygon(body_pts, 32 * s), fill=CYAN)
 
     # 4. Front control panel: LCD screen (navy) + golden calibration weight + touch buttons.
-    d.rounded_rectangle(box(168, 278, 324, 382), radius=20 * s, fill=NAVY)
+    d.rounded_rectangle(box(176, 264, 336, 370), radius=20 * s, fill=NAVY)
 
     # Touch buttons on left and right of LCD screen.
-    d.ellipse(box(112, 310, 148, 346), fill=WHITE)
-    d.ellipse(box(344, 310, 380, 346), fill=WHITE)
+    d.ellipse(box(118, 298, 154, 334), fill=WHITE)
+    d.ellipse(box(358, 298, 394, 334), fill=WHITE)
 
     # Golden calibration weight glyph inside the LCD display.
-    d.ellipse(box(232, 294, 260, 320), fill=YELLOW)
+    d.ellipse(box(242, 280, 270, 306), fill=YELLOW)
     weight_pts = [
-        (222 * s, 316 * s),
-        (270 * s, 316 * s),
-        (280 * s, 364 * s),
-        (212 * s, 364 * s),
+        (232 * s, 302 * s),
+        (280 * s, 302 * s),
+        (290 * s, 352 * s),
+        (222 * s, 352 * s),
     ]
     d.polygon(_rounded_polygon(weight_pts, 8 * s), fill=GOLD)
-
-    # 5. Golden BLE wireless signal arcs at the upper right.
-    acx, acy = 382 * s, 128 * s
-    for r_in, r_out, col in (
-        (34 * s, 48 * s, YELLOW),
-        (60 * s, 74 * s, GOLD),
-    ):
-        _draw_arc_ring(d, acx, acy, r_in, r_out, -70, 16, fill=col)
 
     return image.resize((SIZE, SIZE), Image.Resampling.LANCZOS)
 

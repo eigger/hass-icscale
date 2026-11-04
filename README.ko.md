@@ -16,6 +16,8 @@ ICOMON 블루투스(BLE) 주방·커피 저울에 직접 연결해 무게를 읽
 <!-- hass-standards:badges:end -->
 <!-- hass-standards:header:end -->
 
+![ICScale](custom_components/icscale/brand/logo.png)
+
 ## 지원 기기
 
 서비스 `0000ffb0-…`를 광고하는 ICOMON BLE 주방·커피 저울(로컬 이름 `MY_SCALE*`)입니다. 두 가지 펌웨어 변형을 처리하며 [프로토콜 노트](docs/protocol.md)(영어)를 참고하세요. 자동화 테스트(모의 BLE 전송)만 검증 범위이며 개별 실물 모델·펌웨어는 검증하지 않았습니다.

@@ -8,7 +8,6 @@ from custom_components.icscale import session_report
 from custom_components.icscale.session_report import (
     OP_CONNECT,
     OP_LINK_LOST,
-    OP_TARE,
     build_session_report,
     likely_cause,
 )
@@ -39,12 +38,6 @@ def test_link_lost_has_its_own_sentence() -> None:
     text = likely_cause(_failure(exc, stages.SESSION), OP_LINK_LOST)
     assert text is not None
     assert "dropped the connection" in text
-
-
-def test_a_failed_command_names_the_command() -> None:
-    exc = RuntimeError("write failed")
-    text = likely_cause(_failure(exc, None), OP_TARE)
-    assert text == "The scale did not accept the tare command."
 
 
 def test_unknown_failure_falls_back_to_the_library() -> None:

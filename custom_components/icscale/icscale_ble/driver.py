@@ -21,14 +21,11 @@ from blesession import (
 )
 
 from .const import (
-    CMD_POWER_OFF,
-    CMD_TARE,
     FIRMWARE_REV_CHAR,
     MANUFACTURER_NAME_CHAR,
     MODEL_NUMBER_CHAR,
     NOTIFY_CHAR,
     SERIAL_NUMBER_CHAR,
-    WRITE_CHAR,
 )
 from .models import DeviceInfo, ScaleState
 from .parser import (
@@ -157,24 +154,7 @@ class IcScaleClient:
         except Exception as err:  # noqa: BLE001 - never mask the caller's error
             _LOGGER.debug("%s disconnect error: %s", self._name, err)
 
-    # --- commands ---------------------------------------------------------
-
-    async def tare(self) -> None:
-        """Zero the scale."""
-        await self._write(CMD_TARE)
-
-    async def power_off(self) -> None:
-        """Power the scale off."""
-        await self._write(CMD_POWER_OFF)
-
     # --- internals --------------------------------------------------------
-
-    async def _write(self, packet: bytes) -> None:
-        client = self._client
-        if client is None or not client.is_connected:
-            raise BleakError("Scale not connected")
-        # Commands are written without expecting a response.
-        await client.write_gatt_char(WRITE_CHAR, packet, response=False)
 
     async def _read_device_info(self) -> None:
         client = self._client

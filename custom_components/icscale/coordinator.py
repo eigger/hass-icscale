@@ -25,7 +25,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from collections.abc import Awaitable, Callable
 from datetime import timedelta
 
 from blesession import SessionDropped, SessionReports, SessionTrace, fallback_report
@@ -41,8 +40,6 @@ from .session_report import (
     OP_CONNECT,
     OP_LINK_LOST,
     OP_MEASURE,
-    OP_POWER_OFF,
-    OP_TARE,
     build_session_report,
 )
 
@@ -81,10 +78,6 @@ ADVERTISEMENT_STALE_AFTER = 60.0
 # scale advertised again: a scale that powered itself off (or was switched
 # off) after use is normal, one that dropped the link while awake is not.
 LINK_LOST_CHECK_DELAY = 10.0
-# A drop within this long of a failed command is that command's, not a second error.
-COMMAND_DROP_WINDOW = 10.0
-# A drop within this long after power off is the scale doing as told.
-EXPECTED_DROP_WINDOW = 5.0
 CONNECT_BACKOFF_START = 60.0
 CONNECT_BACKOFF_MAX = 900.0
 
@@ -144,10 +137,6 @@ class IcScaleCoordinator:
         # older than this are from before the drop and say nothing about
         # whether the scale is still awake.
         self._dropped_at: float | None = None
-        # Until when a drop is expected (power off just succeeded).
-        self._expect_drop_until = 0.0
-        # When a command last failed, so the drop it caused is not a second error.
-        self._command_failed_at: float | None = None
         self._unsub_link_checks: set[CALLBACK_TYPE] = set()
 
     # --- lifecycle --------------------------------------------------------
@@ -353,13 +342,12 @@ class IcScaleCoordinator:
         self._connected_at = None
         if not self._closing and not self._lock.locked():
             now = time.monotonic()
-            # Even an expected drop means advertisements from before it say
-            # nothing about whether the scale is still awake.
+            # Advertisements from before the drop say nothing about whether the
+            # scale is still awake.
             self._dropped_at = now
-            if now >= self._expect_drop_until:
-                self.hass.loop.call_soon_threadsafe(
-                    self._async_schedule_link_check, connected_for, now
-                )
+            self.hass.loop.call_soon_threadsafe(
+                self._async_schedule_link_check, connected_for, now
+            )
         self.hass.loop.call_soon_threadsafe(self._async_notify_listeners)
 
     # --- diagnostics ------------------------------------------------------
@@ -396,14 +384,6 @@ class IcScaleCoordinator:
         if self._closing or service_info is None or service_info.time <= dropped_at:
             _LOGGER.debug(
                 "%s: link ended with the scale asleep; not an error", self.name
-            )
-            return
-        if (
-            self._command_failed_at is not None
-            and abs(dropped_at - self._command_failed_at) <= COMMAND_DROP_WINDOW
-        ):
-            _LOGGER.debug(
-                "%s: link ended under a failed command; already recorded", self.name
             )
             return
         trace = SessionTrace()
@@ -664,22 +644,6 @@ class IcScaleCoordinator:
             self._last_weight_change = time.monotonic()
             self._async_reset_backoff()
 
-    async def _async_run_command(
-        self, action: Callable[[], Awaitable[None]], description: str, operation: str
-    ) -> None:
-        """Run a control command, connecting on demand if needed."""
-        await self._async_ensure_connected(description, operation)
-        try:
-            await action()
-        except Exception as err:  # noqa: BLE001
-            # A link that went away under the command is the link check's to
-            # report, not a failed command as well.
-            if self._client.is_connected:
-                self._command_failed_at = time.monotonic()
-                self._async_publish_report(operation, SessionTrace(), err)
-            raise HomeAssistantError(f"{description} failed: {err}") from err
-        self._last_weight_change = time.monotonic()
-
     async def async_measure_now(self) -> None:
         """Force an immediate connect + stream, regardless of idle/standby state.
 
@@ -694,19 +658,6 @@ class IcScaleCoordinator:
         await self._async_ensure_connected("Measure", OP_MEASURE)
         self._last_weight_change = time.monotonic()
         self._async_notify_listeners()
-
-    async def async_tare(self) -> None:
-        """Zero the scale."""
-        await self._async_run_command(self._client.tare, "Tare", OP_TARE)
-
-    async def async_power_off(self) -> None:
-        """Power the scale off."""
-        await self._async_run_command(self._power_off, "Power off", OP_POWER_OFF)
-
-    async def _power_off(self) -> None:
-        """Send the command; the scale ending the link afterwards is expected."""
-        await self._client.power_off()
-        self._expect_drop_until = time.monotonic() + EXPECTED_DROP_WINDOW
 
     async def _async_save_coffee_scale_type(self) -> None:
         """Save the scale type in config entry and reload to update entities."""

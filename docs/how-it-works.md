@@ -22,9 +22,8 @@ integration follows the scale's natural lifecycle:
   idle-disconnected and the scale never stopped advertising, press **Measure now**
   to force an immediate connection and reading. Turning the scale off and on (so
   it re-advertises) also triggers an automatic reconnect.
-- **Interactive Commands**: The **Measure now**, **Tare**, and **Power off**
-  buttons connect on demand to perform the action even if HA is currently
-  disconnected.
+- **On-demand measurement**: The **Measure now** button connects on demand
+  even if HA is currently disconnected.
 
 ## Configuration Options
 

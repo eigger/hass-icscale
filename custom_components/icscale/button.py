@@ -1,4 +1,4 @@
-"""Button platform for the ICOMON kitchen scale (tare and power)."""
+"""Button platform for the ICOMON kitchen scale (measure now)."""
 
 from __future__ import annotations
 
@@ -6,10 +6,11 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
-from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .const import DOMAIN
 from .coordinator import IcScaleCoordinator
 from .entity import IcScaleEntity
 
@@ -28,19 +29,6 @@ BUTTONS: tuple[IcScaleButtonDescription, ...] = (
         icon="mdi:scale",
         press_fn=lambda c: c.async_measure_now(),
     ),
-    IcScaleButtonDescription(
-        key="tare",
-        translation_key="tare",
-        icon="mdi:scale-balance",
-        press_fn=lambda c: c.async_tare(),
-    ),
-    IcScaleButtonDescription(
-        key="power_off",
-        translation_key="power_off",
-        icon="mdi:power",
-        entity_category=EntityCategory.CONFIG,
-        press_fn=lambda c: c.async_power_off(),
-    ),
 )
 
 
@@ -51,14 +39,16 @@ async def async_setup_entry(
 ) -> None:
     """Set up kitchen scale buttons."""
     coordinator: IcScaleCoordinator = entry.runtime_data
-    is_coffee = entry.data.get("is_coffee", False)
 
-    entities = []
-    for description in BUTTONS:
-        if description.key in ("tare", "power_off") and is_coffee:
-            continue
-        entities.append(IcScaleButton(coordinator, description))
-    async_add_entities(entities)
+    # Tare and Power off were removed (unverified commands); drop their leftovers.
+    registry = er.async_get(hass)
+    for key in ("tare", "power_off"):
+        if entity_id := registry.async_get_entity_id(
+            "button", DOMAIN, f"{coordinator.address}_{key}"
+        ):
+            registry.async_remove(entity_id)
+
+    async_add_entities(IcScaleButton(coordinator, d) for d in BUTTONS)
 
 
 class IcScaleButton(IcScaleEntity, ButtonEntity):
@@ -74,16 +64,6 @@ class IcScaleButton(IcScaleEntity, ButtonEntity):
         """Initialize the button."""
         super().__init__(coordinator, description.key)
         self.entity_description = description
-
-    @property
-    def available(self) -> bool:
-        """Buttons are always available unless unsupported on this model."""
-        if (
-            self.entity_description.key in ("tare", "power_off")
-            and self.coordinator.state.is_coffee
-        ):
-            return False
-        return True
 
     async def async_press(self) -> None:
         """Issue the bound command."""

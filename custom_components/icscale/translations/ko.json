@@ -43,9 +43,7 @@
       "stable": { "name": "안정" }
     },
     "button": {
-      "measure": { "name": "지금 측정" },
-      "tare": { "name": "영점" },
-      "power_off": { "name": "전원 끄기" }
+      "measure": { "name": "지금 측정" }
     },
     "switch": {
       "auto_measure": { "name": "자동 측정" }

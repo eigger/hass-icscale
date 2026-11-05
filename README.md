@@ -32,7 +32,6 @@ ICOMON BLE kitchen and coffee scales that advertise service `0000ffb0-…` (loca
 - **Automatic measurement Switch**: When on, HA auto-connects and streams weight while the scale is awake; turn it off to free the scale's Bluetooth for the phone app (single-connection devices)
 - **Idle auto-disconnect**: Releases the scale after a configurable idle period so it can power off; reconnects automatically when used again
 - **Measure now**: Button that forces an immediate connection and reading, for deterministic on-demand measurement regardless of the automatic connection state
-- **Tare and Power Off**: Interactive buttons to zero out the weight or turn off the scale
 - **Auto-discovery**: Instantly discovered via the Home Assistant Bluetooth integration
 
 ## Requirements

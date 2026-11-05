@@ -7,8 +7,10 @@ from dataclasses import dataclass
 
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .const import DOMAIN
 from .coordinator import IcScaleCoordinator
 from .entity import IcScaleEntity
 
@@ -38,10 +40,15 @@ async def async_setup_entry(
     """Set up kitchen scale buttons."""
     coordinator: IcScaleCoordinator = entry.runtime_data
 
-    entities = []
-    for description in BUTTONS:
-        entities.append(IcScaleButton(coordinator, description))
-    async_add_entities(entities)
+    # Tare and Power off were removed (unverified commands); drop their leftovers.
+    registry = er.async_get(hass)
+    for key in ("tare", "power_off"):
+        if entity_id := registry.async_get_entity_id(
+            "button", DOMAIN, f"{coordinator.address}_{key}"
+        ):
+            registry.async_remove(entity_id)
+
+    async_add_entities(IcScaleButton(coordinator, d) for d in BUTTONS)
 
 
 class IcScaleButton(IcScaleEntity, ButtonEntity):

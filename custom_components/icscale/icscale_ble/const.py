@@ -19,7 +19,7 @@ def _uuid16(short: str) -> str:
 # --- GATT profile -----------------------------------------------------------
 # Custom vendor service that identifies a kitchen scale in advertisements.
 SCALE_SERVICE: Final = _uuid16("ffb0")
-# Write-without-response: control commands.
+# Write-without-response: control commands (not used by this integration).
 WRITE_CHAR: Final = _uuid16("ffb1")
 # Notifications: weight + unit frames.
 NOTIFY_CHAR: Final = _uuid16("ffb2")
@@ -36,9 +36,6 @@ FIRMWARE_REV_CHAR: Final = _uuid16("2a26")
 PKG_WEIGHT_STABLE: Final = 0xCA  # 202: stabilized weight
 PKG_WEIGHT_UNSTABLE: Final = 0xCE  # 206: live/unstable weight
 PKG_UNIT: Final = 0xCC  # 204: unit changed
-
-# Device type byte embedded in every command frame (==4 for kitchen scale).
-DEVICE_TYPE: Final = 0x04
 
 
 class KitchenScaleUnit(IntEnum):

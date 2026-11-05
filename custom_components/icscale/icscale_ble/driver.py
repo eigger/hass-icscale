@@ -26,7 +26,6 @@ from .const import (
     MODEL_NUMBER_CHAR,
     NOTIFY_CHAR,
     SERIAL_NUMBER_CHAR,
-    WRITE_CHAR,
 )
 from .models import DeviceInfo, ScaleState
 from .parser import (
@@ -156,13 +155,6 @@ class IcScaleClient:
             _LOGGER.debug("%s disconnect error: %s", self._name, err)
 
     # --- internals --------------------------------------------------------
-
-    async def _write(self, packet: bytes) -> None:
-        client = self._client
-        if client is None or not client.is_connected:
-            raise BleakError("Scale not connected")
-        # Commands are written without expecting a response.
-        await client.write_gatt_char(WRITE_CHAR, packet, response=False)
 
     async def _read_device_info(self) -> None:
         client = self._client

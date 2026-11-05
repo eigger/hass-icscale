@@ -342,8 +342,8 @@ class IcScaleCoordinator:
         self._connected_at = None
         if not self._closing and not self._lock.locked():
             now = time.monotonic()
-            # Even an expected drop means advertisements from before it say
-            # nothing about whether the scale is still awake.
+            # Advertisements from before the drop say nothing about whether the
+            # scale is still awake.
             self._dropped_at = now
             self.hass.loop.call_soon_threadsafe(
                 self._async_schedule_link_check, connected_for, now

@@ -27,7 +27,7 @@ See [Bluetooth proxy setup](https://github.com/eigger/blesession/blob/main/docs/
 - **Sensor values not updating**: HA connects when the scale is awake and advertising. Make sure the scale is powered on, and confirm the **Automatic measurement** switch is on (or press **Measure now**). Place something on the scale to generate a weight change.
 ## Diagnostics and logs
 
-The Last error and Error count diagnostic sensors expose failed sessions. Expected sleep is not counted as unexpected link failures. Connection path facts are reported only when observed; discovery by a receiver does not prove it carried the connection.
+The Last error and Error count diagnostic sensors expose failed sessions. Expected sleep is not counted as an unexpected link failure. Connection path facts are reported only when observed; discovery by a receiver does not prove it carried the connection.
 
 If you face issues, enable debug logs for one reproduction and turn them off afterward:
 

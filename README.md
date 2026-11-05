@@ -1,7 +1,7 @@
 <!-- hass-standards:header:start -->
-# ICOMON Kitchen Scale (hass-icscale)
+# ICOMON Kitchen Scale for Home Assistant
 
-A HACS custom integration for Home Assistant that connects directly over Bluetooth Low Energy (BLE) to ICOMON kitchen / coffee scales and reads weight data. It is not part of Home Assistant Core.
+A Home Assistant custom integration that reads weight directly from ICOMON Bluetooth Low Energy kitchen and coffee scales.
 
 **English** | [한국어](README.ko.md)
 
@@ -37,8 +37,8 @@ ICOMON BLE kitchen and coffee scales that advertise service `0000ffb0-…` (loca
 
 ## Requirements
 
-- Home Assistant 2025.2.0 or newer
-- A Bluetooth adapter or, strongly recommended, an ESPHome Bluetooth proxy (see [Important limitations](#important-limitations))
+- **Home Assistant:** 2025.2.0 or later.
+- **Bluetooth:** A Bluetooth adapter or preferably an ESPHome Bluetooth proxy. See [Important limitations](#important-limitations).
 
 ## Installation
 
@@ -46,13 +46,13 @@ ICOMON BLE kitchen and coffee scales that advertise service `0000ffb0-…` (loca
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=eigger&repository=hass-icscale&category=integration)
 <!-- hass-standards:installation:end -->
 
-1. **HACS**: add `eigger/hass-icscale` as a custom repository (type *Integration*) and install it, or copy `custom_components/icscale` into your Home Assistant `custom_components` folder.
-2. Restart Home Assistant.
-3. Turn the scale on. It should be discovered automatically under **Settings** > **Devices & Services**; click **Configure**. Otherwise choose **Add Integration** and search for "ICOMON Kitchen Scale".
-
-To remove it, delete the integration entry in **Devices & Services**, then uninstall it from HACS (or delete the folder).
+1. Click the badge above to open the repository in Marketplace.
+2. If you need to add it yourself, go to **Settings → Marketplace → Add from link** and enter <https://github.com/eigger/hass-icscale>. Connect GitHub if prompted.
+3. Select **Install**. Restart Home Assistant if prompted, then continue to [Configuration](#configuration).
 
 ## Configuration
+
+Turn the scale on and configure it under **Settings → Devices & services**, or choose **Add integration → ICOMON Kitchen Scale**.
 
 Under **Configure** on the integration page you can set the **Idle disconnect timeout (minutes)**: how long without a weight change before Home Assistant releases the connection (default 3). More in [How it works](docs/how-it-works.md).
 
@@ -61,6 +61,8 @@ Under **Configure** on the integration page you can set the **Idle disconnect ti
 Turn the scale on, wait for the weight sensor to become available, then place an item on it. Press **Measure now** to force a connection if the scale is still advertising after an idle disconnect.
 
 ## Important limitations
+
+To remove it, delete the entry under **Devices & services**, then uninstall it from Marketplace.
 
 - Use a **Bluetooth proxy rather than a built-in adapter** whenever possible, with `active: true`:
 

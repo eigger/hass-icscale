@@ -1,20 +1,28 @@
 {
-    "domain": "icscale",
-    "name": "ICOMON Kitchen Scale",
-    "bluetooth": [
-        {
-            "local_name": "MY_SCALE*",
-            "service_uuid": "0000ffb0-0000-1000-8000-00805f9b34fb",
-            "connectable": true,
-        }
-    ],
-    "categories": ["appliances_cleaning.cooking"],
-    "codeowners": ["@eigger"],
-    "config_flow": true,
-    "dependencies": ["bluetooth_adapters"],
-    "documentation": "https://github.com/eigger/hass-icscale",
-    "iot_class": "local_push",
-    "issue_tracker": "https://github.com/eigger/hass-icscale/issues",
-    "requirements": ["blesession\u003e=0.9.1"],
-    "version": "0.3.1",
+  "domain": "icscale",
+  "name": "ICOMON Kitchen Scale",
+  "bluetooth": [
+    {
+      "local_name": "MY_SCALE*",
+      "service_uuid": "0000ffb0-0000-1000-8000-00805f9b34fb",
+      "connectable": true
+    }
+  ],
+  "categories": [
+    "appliances_cleaning.cooking"
+  ],
+  "codeowners": [
+    "@eigger"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "bluetooth_adapters"
+  ],
+  "documentation": "https://github.com/eigger/hass-icscale",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/eigger/hass-icscale/issues",
+  "requirements": [
+    "blesession>=0.9.1"
+  ],
+  "version": "0.3.1"
 }

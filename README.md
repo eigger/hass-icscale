@@ -16,6 +16,8 @@ A HACS custom integration for Home Assistant that connects directly over Bluetoo
 <!-- hass-standards:badges:end -->
 <!-- hass-standards:header:end -->
 
+![ICScale](custom_components/icscale/brand/logo.png)
+
 ## Supported devices
 
 ICOMON BLE kitchen and coffee scales that advertise service `0000ffb0-…` (local name `MY_SCALE*`). Two firmware variants are handled; see [protocol notes](docs/protocol.md). Only the automated tests (mocked BLE transport) are claimed; physical models and firmware are not individually verified.

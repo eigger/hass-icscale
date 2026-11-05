@@ -1,7 +1,7 @@
 <!-- hass-standards:header:start -->
-# ICOMON Kitchen Scale (hass-icscale)
+# ICOMON Kitchen Scale for Home Assistant
 
-ICOMON 블루투스(BLE) 주방·커피 저울에 직접 연결해 무게를 읽는 Home Assistant용 HACS 커스텀 통합입니다. Home Assistant Core에 포함된 통합이 아닙니다.
+ICOMON Bluetooth LE 주방·커피 저울에 직접 연결해 무게를 읽는 Home Assistant 커스텀 통합입니다.
 
 [English](README.md) | **한국어**
 
@@ -37,8 +37,8 @@ ICOMON 블루투스(BLE) 주방·커피 저울에 직접 연결해 무게를 읽
 
 ## 요구사항
 
-- Home Assistant 2025.2.0 이상
-- 블루투스 어댑터 또는 (강력 권장) ESPHome 블루투스 프록시([중요 제한사항](#중요-제한사항) 참고)
+- **Home Assistant:** 2025.2.0 이상.
+- **Bluetooth:** Bluetooth 어댑터 또는 ESPHome Bluetooth 프록시(권장). [중요 제한사항](#중요-제한사항)을 참고하세요.
 
 ## 설치
 
@@ -46,13 +46,13 @@ ICOMON 블루투스(BLE) 주방·커피 저울에 직접 연결해 무게를 읽
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=eigger&repository=hass-icscale&category=integration)
 <!-- hass-standards:installation:end -->
 
-1. **HACS**: `eigger/hass-icscale`을 커스텀 리포지토리(*Integration*)로 추가해 설치하거나, `custom_components/icscale` 폴더를 Home Assistant의 `custom_components`에 복사합니다.
-2. Home Assistant를 재시작합니다.
-3. 저울 전원을 켭니다. **설정** > **기기 및 서비스**에 자동 검색되면 **구성**을 누릅니다. 검색되지 않으면 **통합 추가**에서 "ICOMON Kitchen Scale"을 검색합니다.
-
-제거하려면 **기기 및 서비스**에서 통합 항목을 삭제한 뒤 HACS에서 제거(또는 폴더 삭제)합니다.
+1. 위 배지를 클릭해 마켓플레이스에서 저장소를 엽니다.
+2. 저장소를 직접 추가하려면 **설정 → 마켓플레이스 → 링크에서 추가**에서 <https://github.com/eigger/hass-icscale>을 입력합니다. 안내가 표시되면 GitHub 계정을 연결합니다.
+3. **설치**를 선택합니다. 재시작 안내가 표시되면 Home Assistant를 재시작합니다. 설치가 끝나면 [설정](#설정)으로 이동합니다.
 
 ## 설정
+
+저울을 켜고 **설정 → 기기 및 서비스**에서 발견된 기기를 설정하거나 **통합 추가 → ICOMON Kitchen Scale**을 선택합니다.
 
 통합 페이지의 **구성**에서 **유휴 연결 해제 시간(분)**을 설정합니다. 무게 변화가 없을 때 연결을 해제하기까지의 시간이며 기본값은 3분입니다. 자세한 동작은 [동작 방식](docs/how-it-works.md)(영어)을 참고하세요.
 
@@ -61,6 +61,8 @@ ICOMON 블루투스(BLE) 주방·커피 저울에 직접 연결해 무게를 읽
 저울을 켜고 무게 센서가 사용 가능해질 때까지 기다린 뒤 물건을 올립니다. 유휴 해제 후에도 저울이 계속 광고 중이면 **지금 측정**을 눌러 즉시 연결합니다.
 
 ## 중요 제한사항
+
+제거할 때는 **기기 및 서비스**에서 통합 항목을 삭제한 뒤 마켓플레이스에서 제거합니다.
 
 - 가능하면 내장 어댑터보다 **블루투스 프록시**를 사용하고 `active: true`로 설정하세요.
 

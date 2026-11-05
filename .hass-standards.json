@@ -21,10 +21,10 @@
   },
   "domain": "icscale",
   "readme": {
-    "title": "ICOMON Kitchen Scale (hass-icscale)",
+    "title": "ICOMON Kitchen Scale for Home Assistant",
     "descriptions": {
-      "en": "A HACS custom integration for Home Assistant that connects directly over Bluetooth Low Energy (BLE) to ICOMON kitchen / coffee scales and reads weight data. It is not part of Home Assistant Core.",
-      "ko": "ICOMON 블루투스(BLE) 주방·커피 저울에 직접 연결해 무게를 읽는 Home Assistant용 HACS 커스텀 통합입니다. Home Assistant Core에 포함된 통합이 아닙니다."
+      "en": "A Home Assistant custom integration that reads weight directly from ICOMON Bluetooth Low Energy kitchen and coffee scales.",
+      "ko": "ICOMON Bluetooth LE 주방·커피 저울에 직접 연결해 무게를 읽는 Home Assistant 커스텀 통합입니다."
     },
     "issues": true,
     "discussions": true,

@@ -2,9 +2,10 @@
 
 The artwork is an original geometric brand mark on a dark navy rounded square:
 a centered cyan and white digital kitchen scale with a golden calibration weight
-readout icon. Drawn from geometric primitives at 4x scale and downsampled, so no
-source image, external font file, or network access is needed. Run with
-Pillow 12.3.0 for reproducible PNGs.
+readout icon and a crisp Bluetooth rune symbol on the upper weighing platform.
+Drawn from geometric primitives at 4x scale and downsampled, so no source image,
+external font file, or network access is needed. Run with Pillow 12.3.0 for
+reproducible PNGs.
 """
 
 from __future__ import annotations
@@ -80,6 +81,75 @@ def _rounded_polygon(
     return poly_pts
 
 
+def _draw_thick_polyline(
+    draw: ImageDraw.ImageDraw,
+    pts: list[tuple[float, float]],
+    width: float,
+    color: str,
+) -> None:
+    """Draw a thick polyline with perfectly round caps and joins."""
+    r = width / 2.0
+    for x, y in pts:
+        draw.ellipse([x - r, y - r, x + r, y + r], fill=color)
+    for (x1, y1), (x2, y2) in zip(pts, pts[1:], strict=False):
+        dx = x2 - x1
+        dy = y2 - y1
+        length = math.hypot(dx, dy)
+        if length == 0:
+            continue
+        nx = -dy / length * r
+        ny = dx / length * r
+        draw.polygon(
+            [
+                (x1 + nx, y1 + ny),
+                (x2 + nx, y2 + ny),
+                (x2 - nx, y2 - ny),
+                (x1 - nx, y1 - ny),
+            ],
+            fill=color,
+        )
+
+
+def _draw_bluetooth_rune(
+    draw: ImageDraw.ImageDraw,
+    cx: float,
+    cy: float,
+    half_h: float,
+    w_right: float,
+    w_left: float,
+    stroke: float,
+    color: str,
+    s: int,
+) -> None:
+    """Draw a clean geometric Bluetooth rune centered at (cx, cy)."""
+    _draw_thick_polyline(
+        draw,
+        [(cx * s, (cy - half_h) * s), (cx * s, (cy + half_h) * s)],
+        stroke * s,
+        color,
+    )
+    _draw_thick_polyline(
+        draw,
+        [
+            (cx * s, (cy - half_h) * s),
+            ((cx + w_right) * s, (cy - half_h * 0.5) * s),
+            ((cx - w_left) * s, (cy + half_h * 0.5) * s),
+        ],
+        stroke * s,
+        color,
+    )
+    _draw_thick_polyline(
+        draw,
+        [
+            (cx * s, (cy + half_h) * s),
+            ((cx + w_right) * s, (cy + half_h * 0.5) * s),
+            ((cx - w_left) * s, (cy - half_h * 0.5) * s),
+        ],
+        stroke * s,
+        color,
+    )
+
+
 def draw_icon() -> Image.Image:
     """Draw the 512px RGBA app icon."""
     s = SCALE
@@ -101,6 +171,19 @@ def draw_icon() -> Image.Image:
     ]
     d.polygon(_rounded_polygon(platform_pts, 28 * s), fill=WHITE)
     d.rounded_rectangle(box(120, 192, 392, 212), radius=10 * s, fill=CYAN)
+
+    # Crisp Bluetooth rune centered on the white weighing platform.
+    _draw_bluetooth_rune(
+        d,
+        cx=256.0,
+        cy=144.0,
+        half_h=32.0,
+        w_right=22.0,
+        w_left=20.0,
+        stroke=9.5,
+        color=NAVY,
+        s=s,
+    )
 
     # 3. Centered main scale body (cyan trapezoid) and bottom feet.
     d.rounded_rectangle(box(118, 392, 176, 424), radius=12 * s, fill=GOLD)

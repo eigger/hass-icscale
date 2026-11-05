@@ -55,8 +55,6 @@ def likely_cause(failure: Failure, operation: str) -> str | None:
         # The library's sentence here is the bare "could not be established";
         # for this scale the usual reasons are known.
         return _SLEEP_HINT + placement(failure.facts, noun="scale")
-    if key is not None:
-        return None
     return None
 
 

@@ -41,9 +41,10 @@ async def test_stale_command_buttons_are_removed_on_setup(
             f"{ADDRESS}_{key}",
             config_entry=mock_config_entry,
         )
-    await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
     await hass.async_block_till_done()
     for key in ("tare", "power_off"):
         assert (
             registry.async_get_entity_id("button", DOMAIN, f"{ADDRESS}_{key}") is None
         )
+    assert registry.async_get_entity_id("button", DOMAIN, f"{ADDRESS}_measure")

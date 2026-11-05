@@ -21,8 +21,6 @@ from blesession import (
 )
 
 from .const import (
-    CMD_POWER_OFF,
-    CMD_TARE,
     FIRMWARE_REV_CHAR,
     MANUFACTURER_NAME_CHAR,
     MODEL_NUMBER_CHAR,
@@ -156,16 +154,6 @@ class IcScaleClient:
                 await client.disconnect()
         except Exception as err:  # noqa: BLE001 - never mask the caller's error
             _LOGGER.debug("%s disconnect error: %s", self._name, err)
-
-    # --- commands ---------------------------------------------------------
-
-    async def tare(self) -> None:
-        """Zero the scale."""
-        await self._write(CMD_TARE)
-
-    async def power_off(self) -> None:
-        """Power the scale off."""
-        await self._write(CMD_POWER_OFF)
 
     # --- internals --------------------------------------------------------
 

@@ -29,9 +29,3 @@ Two notification frame variants are supported and auto-detected by length.
 ```
 
 `weight_grams = magnitude / 10**precision`, negated when the sign bit is set.
-
-Command frames written to `0xFFB1` (write-without-response, device type `0x04`),
-used by the kitchen-scale variant (coffee-scale firmware ignores them):
-
-- Tare: `AC 04 FE 14 01 00 CC`
-- Power off: `AC 04 FE 00 00 00 B0`

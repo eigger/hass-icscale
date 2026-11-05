@@ -26,8 +26,6 @@ if TYPE_CHECKING:
 
 OP_CONNECT = "connect"
 OP_MEASURE = "measure"
-OP_TARE = "tare"
-OP_POWER_OFF = "power_off"
 OP_LINK_LOST = "link_lost"
 
 _SLEEP_HINT = (
@@ -39,7 +37,6 @@ _LINK_LOST = (
     "The scale dropped the connection by itself. It has most likely powered "
     "itself off or gone out of range, or the phone app took over the link."
 )
-_COMMAND_FAILED = "The scale did not accept the {operation} command."
 
 
 def likely_cause(failure: Failure, operation: str) -> str | None:
@@ -60,8 +57,6 @@ def likely_cause(failure: Failure, operation: str) -> str | None:
         return _SLEEP_HINT + placement(failure.facts, noun="scale")
     if key is not None:
         return None
-    if operation in (OP_TARE, OP_POWER_OFF):
-        return _COMMAND_FAILED.format(operation=operation.replace("_", " "))
     return None
 
 

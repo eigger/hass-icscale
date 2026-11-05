@@ -43,9 +43,7 @@
       "stable": { "name": "Stable" }
     },
     "button": {
-      "measure": { "name": "Measure now" },
-      "tare": { "name": "Tare" },
-      "power_off": { "name": "Power off" }
+      "measure": { "name": "Measure now" }
     },
     "switch": {
       "auto_measure": { "name": "Automatic measurement" }

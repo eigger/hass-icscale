@@ -109,6 +109,7 @@ class IcScaleClient:
                 if self._on_disconnect is not None:
                     self._on_disconnect()
 
+            cancelled = None
             async with ble_session(
                 device,
                 trace=trace,
@@ -123,19 +124,23 @@ class IcScaleClient:
                     await start_notify_with_recovery(
                         client, NOTIFY_CHAR, self._handle_notification
                     )
-                except BaseException:
-                    # keep=True hands the link to us, so a failed set-up must
-                    # close it here.
-                    # A drop during set-up already reached the owner through
-                    # the disconnect callback (which cleared the client).
+                except BaseException as err:
+                    # keep=True hands the link to us. Send the close even if
+                    # the backend already reports it down: a proxy may still
+                    # hold its connection slot.
                     reported = self._client is not client
                     self._client = None
                     await self._close(client)
-                    # The link was visible as up while setting up, so tell the
-                    # owner it is gone, once.
                     if not reported and self._on_disconnect is not None:
                         self._on_disconnect()
-                    raise
+                    if isinstance(err, asyncio.CancelledError):
+                        # Exit the session normally after our close so newer
+                        # blesession does not repeat cancellation cleanup.
+                        cancelled = err
+                    else:
+                        raise
+            if cancelled is not None:
+                raise cancelled
 
     async def disconnect(self) -> None:
         """Tear down the GATT link if connected."""

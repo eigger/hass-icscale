@@ -121,15 +121,39 @@ async def test_disconnect_error_does_not_mask_the_setup_error(monkeypatch) -> No
         await IcScaleClient("Scale").connect(FakeDevice(), None, None)
 
 
-async def test_cancelled_setup_closes_the_link_once(monkeypatch) -> None:
+@pytest.mark.parametrize("backend_reports_disconnected", [False, True])
+async def test_cancelled_setup_closes_the_link_once(
+    monkeypatch, backend_reports_disconnected
+) -> None:
     fake = ScaleFakeClient()
-    fake.fail_start_notify = asyncio.CancelledError()
+
+    async def cancelled_notify(*args):
+        if backend_reports_disconnected:
+            # A proxy can still hold its slot after the backend says down.
+            fake.is_connected = False
+        raise asyncio.CancelledError()
+
+    monkeypatch.setattr(fake, "start_notify", cancelled_notify)
     _patch(monkeypatch, fake)
     scale = IcScaleClient("Scale")
+    dropped = []
     with pytest.raises(asyncio.CancelledError):
-        await scale.connect(FakeDevice(), None, None)
+        await scale.connect(FakeDevice(), lambda: dropped.append(True), None)
     assert fake.disconnects == 1
+    assert not fake.is_connected
     assert not scale.is_connected
+    assert dropped == [True]
+
+    # A cancelled setup must not leave an owned handle to close again.
+    await scale.disconnect()
+    assert fake.disconnects == 1
+
+    replacement = ScaleFakeClient()
+    _patch(monkeypatch, replacement)
+    await scale.connect(FakeDevice(), None, None)
+    assert scale.is_connected
+    await scale.disconnect()
+    assert replacement.disconnects == 1
 
 
 async def test_drop_during_device_info_read_fails_the_connect(monkeypatch) -> None:
